@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
+.venv/
+data/sessions/*.json
+data/pdfs/*.pdf
+!data/sessions/.gitkeep
+!data/pdfs/.gitkeep
+

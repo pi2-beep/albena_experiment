@@ -1,0 +1,1 @@
+PDF генераторът използва локалните DejaVu Sans и DejaVu Sans Bold за коректно изобразяване на кирилица. DejaVu fonts се разпространяват съгласно техния свободен лиценз: https://dejavu-fonts.github.io/License.html

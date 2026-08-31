@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Изследване за ИИ и формирането на преценка при публични политики">
+  <title>Експеримент Албена</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <main class="shell">
+    <section id="login-view" class="login-card" aria-labelledby="login-title">
+      <div class="login-brand-panel">
+        <img class="login-brand-mark" src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt="">
+        <div class="brand-panel-copy">
+          <p class="overline-light">Изследователска среда</p>
+          <h2>Вашата преценка.<br>Вашият процес.</h2>
+          <p>Структурирано изследване за ролята на генеративния ИИ при работа с публични политики.</p>
+        </div>
+        <div class="session-facts">
+          <div><span>01</span><p><strong>Анонимен код</strong><small>Без име и имейл</small></p></div>
+          <div><span>02</span><p><strong>8 ясни стъпки</strong><small>Черновата се запазва</small></p></div>
+          <div><span>03</span><p><strong>Финален PDF</strong><small>Всички данни в един файл</small></p></div>
+        </div>
+        <p class="brand-panel-footer">Институт по публична администрация</p>
+      </div>
+      <div class="login-content">
+        <a class="ipa-logo-link" href="https://www.ipa.government.bg/" target="_blank" rel="noopener" aria-label="Институт по публична администрация">
+          <img class="ipa-logo" src="{{ url_for('static', filename='img/ipa-logo.png') }}" alt="Институт по публична администрация">
+        </a>
+        <div class="login-title-block">
+          <span class="status-pill"><i></i> За поканени участници</span>
+          <p class="eyebrow">Експеримент Албена</p>
+          <h1 id="login-title">Професионална преценка и генеративен ИИ</h1>
+          <p class="lead">Въведете предоставения Ви код, за да започнете или да продължите запазена чернова.</p>
+        </div>
+        <form id="login-form" novalidate>
+          <label for="participant-code">Код на участника</label>
+          <div class="login-row">
+            <input id="participant-code" name="participant_code" autocomplete="off" maxlength="40" required placeholder="напр. ALB-017">
+            <button class="button primary" type="submit"><span>Продължи</span><b aria-hidden="true">→</b></button>
+          </div>
+          <p id="login-error" class="field-error" role="alert"></p>
+        </form>
+        <div class="login-assurance">
+          <div class="assurance-icon" aria-hidden="true">✓</div>
+          <p><strong>Поверителна изследователска сесия</strong><span>Не въвеждайте име, имейл или друг личен идентификатор. Данните се пазят локално.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="app-view" class="app-layout" hidden>
+      <aside class="sidebar">
+        <div class="side-brand"><img src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt=""><div><strong>Експеримент</strong><small>Албена</small></div></div>
+        <div class="participant-chip"><span>Код</span><strong id="participant-label"></strong></div>
+        <nav id="step-nav" aria-label="Етапи на изследването">
+          <button data-step="0"><span>1</span><b>Описание</b></button>
+          <button data-step="1"><span>2</span><b>Съгласие</b></button>
+          <button data-step="2"><span>3</span><b>Казус</b></button>
+          <button data-step="3"><span>4</span><b>Самостоятелна фаза</b></button>
+          <button data-step="4"><span>5</span><b>Работа с ИИ</b></button>
+          <button data-step="5"><span>6</span><b>След ИИ</b></button>
+          <button data-step="6"><span>7</span><b>Опит с ИИ</b></button>
+          <button data-step="7"><span>8</span><b>Преглед и PDF</b></button>
+        </nav>
+        <div class="save-status" id="save-status" aria-live="polite">Черновата е готова</div>
+        <button id="logout-button" class="text-button" type="button">Изход от сесията</button>
+      </aside>
+
+      <div class="workspace">
+        <div class="institution-bar">
+          <a href="https://www.ipa.government.bg/" target="_blank" rel="noopener"><img src="{{ url_for('static', filename='img/ipa-logo.png') }}" alt="Институт по публична администрация"></a>
+          <div class="institution-meta"><span>Изследователски формуляр</span><b>ИИ и публични политики</b></div>
+          <div class="privacy-badge"><i></i><span>Локално<br><b>автозапазване</b></span></div>
+        </div>
+        <header class="mobile-header">
+          <div class="side-brand"><img src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt=""><div><strong>Експеримент Албена</strong></div></div>
+          <span id="mobile-progress">1 / 8</span>
+        </header>
+        <div class="progress-track"><span id="progress-bar"></span></div>
+
+        <form id="study-form" novalidate>
+          <section class="step" data-step="0">
+            <p class="eyebrow">Преди да започнете</p>
+            <h2>Описание на проекта</h2>
+            <p class="section-lead">Изследването проучва как взаимодействието с генеративен изкуствен интелект се свързва с анализа на доказателства и формирането на професионална преценка по въпрос на публичната политика.</p>
+
+            <div class="callout"><strong>Няма един предварително определен правилен отговор.</strong><p>Целта е първо да направите собствена преценка, а след това да използвате ИИ така, както бихте го използвали реално за аналитична подкрепа.</p></div>
+
+            <h3>Как протича участието</h3>
+            <ol class="timeline">
+              <li><span>01</span><div><strong>Запознаване с казуса</strong><p>Ще прочетете фиктивен казус за градска мобилност и общ пакет с доказателства.</p></div></li>
+              <li><span>02</span><div><strong>Самостоятелна преценка</strong><p>Ще изберете вариант, ще разпределите 100 точки и ще оцените увереността си — без използване на ИИ.</p></div></li>
+              <li><span>03</span><div><strong>Работа с ИИ</strong><p>Ще документирате между 3 и 5 взаимодействия. Първите три са задължителни, а четвъртото и петото са по избор.</p></div></li>
+              <li><span>04</span><div><strong>Окончателна оценка</strong><p>Ще повторите преценката, ще оцените влиянието на ИИ и ще потвърдите финално решение.</p></div></li>
+            </ol>
+
+            <div class="info-grid">
+              <article><span>Доброволно</span><p>Можете да прекратите преди приключване, без негативни последици.</p></article>
+              <article><span>Анонимно</span><p>Използва се само код на участника, без име или имейл.</p></article>
+              <article><span>Контролирано</span><p>ИИ трябва да работи само с информацията от казуса.</p></article>
+            </div>
+          </section>
+
+          <section class="step" data-step="1" hidden>
+            <p class="eyebrow">Задължително преди участие</p>
+            <h2>Информирано съгласие</h2>
+            <p class="section-lead">Прочетете внимателно. Продължаването е възможно само ако приемете всяка декларация.</p>
+
+            <div class="prose-card">
+              <h3>Какво включва участието</h3>
+              <p>Прочит на кратък фиктивен казус, самостоятелна първоначална преценка, между 3 и 5 документирани взаимодействия с предоставен ИИ асистент, повторна оценка и кратки въпроси за увереност, влияние и професионален опит с ИИ.</p>
+              <h3>Запис на разговора с ИИ</h3>
+              <p>Текстът на разговора ще бъде записан и анализиран в анонимизиран вид. Той може да бъде използван за анализ на това дали се търсят сравнение, препоръка, противоположни аргументи, рискове или проверка.</p>
+              <h3>Доброволност, рискове и поверителност</h3>
+              <p>Участието е доброволно. Казусът е фиктивен и не се оценява Вашата компетентност. Резултатите ще бъдат анализирани на агрегирано ниво. Анонимизирани откъси не трябва да позволяват идентифициране на участника.</p>
+              <div class="warning"><strong>Не въвеждайте</strong> имена, лични данни, служебна тайна, класифицирана или друга чувствителна информация.</div>
+            </div>
+
+            <fieldset class="consent-list" data-required-group>
+              <legend class="sr-only">Декларации за съгласие</legend>
+              <label><input type="checkbox" name="consent.read_info" required><span>Прочетох и разбрах информацията за изследването.</span></label>
+              <label><input type="checkbox" name="consent.voluntary" required><span>Разбирам, че участието ми е доброволно.</span></label>
+              <label><input type="checkbox" name="consent.recording" required><span>Съгласен/на съм разговорът ми с ИИ да бъде записан и анализиран в анонимизиран вид.</span></label>
+              <label><input type="checkbox" name="consent.no_sensitive" required><span>Ще избягвам въвеждането на лична, чувствителна или поверителна служебна информация.</span></label>
+              <label><input type="checkbox" name="consent.participate" required><span>Съгласен/на съм да участвам в изследването.</span></label>
+            </fieldset>
+            <div class="two-cols compact-fields">
+              <label>Код на участника<input id="consent-code" disabled></label>
+              <label>Дата<input type="date" name="consent.date" required></label>
+            </div>
+          </section>
+
+          <section class="step" data-step="2" hidden>
+            <p class="eyebrow">Казус 1</p>
+            <h2>Градска мобилност и преференции за електрически автомобили</h2>
+            <p class="section-lead">Вие сте част от експертен екип, който консултира администрацията на голям фиктивен европейски град.</p>
+
+            <div class="prose-card case-intro">
+              <p>Преди осем години градът въвежда преференциален режим за електрически автомобили. Те плащат 25% от стандартната цена за паркиране в централната зона, 50% от стандартната такса за зона с интензивен трафик и имат достъп до някои ограничени зони.</p>
+              <p>При въвеждането им електрическите автомобили са около 3% от автомобилния парк. Днес са приблизително 31% от всички автомобили и около 46% от новорегистрираните.</p>
+            </div>
+
+            <h3>Възможни решения</h3>
+            <div class="option-cards">
+              <article><span>A</span><div><h4>Запазване на режима</h4><p>Преференциите се запазват без промяна през следващите четири години.</p></div></article>
+              <article><span>B</span><div><h4>Постепенно намаляване</h4><p>Преференциите се ограничават в рамките на три години, но остават по-ниски.</p></div></article>
+              <article><span>C</span><div><h4>Еднакви такси</h4><p>Таксите се изравняват, а ресурсът се насочва към инфраструктура и целеви мерки.</p></div></article>
+            </div>
+
+            <h3>Налична информация</h3>
+            <div class="evidence-grid">
+              <article><h4>Емисии</h4><p>Локалните емисии са намалели значително. Увеличаването на електромобилите има съществен принос.</p></article>
+              <article><h4>Задръствания</h4><p>Трафикът не е намалял. Загубеното време е с около 8% по-високо спрямо пет години по-рано.</p></article>
+              <article><h4>Паркиране</h4><p>Средната заетост на централните места през работни дни е приблизително 91%.</p></article>
+              <article><h4>Прогноза след 3 години</h4><p>Дял при новите регистрации: 61% за A, 58% за B и 52% за C. Прогнозите са несигурни.</p></article>
+              <article><h4>Фискален ефект</h4><p>Настоящите преференции означават около 14 млн. евро по-ниски годишни приходи; при B — около 6 млн. след третата година.</p></article>
+              <article><h4>Социален ефект</h4><p>Домакинствата с електромобил средно имат по-високи доходи. Разликата намалява, но остава.</p></article>
+              <article><h4>Зарядна инфраструктура</h4><p>Точките растат, но достъпът е неравномерен, особено в крайните квартали и без собствено паркомясто.</p></article>
+            </div>
+            <div class="callout no-ai"><strong>На този етап не използвайте ИИ.</strong><p>Самостоятелната Ви преценка трябва да се основава само на информацията по-горе.</p></div>
+          </section>
+
+          <section class="step" data-step="3" hidden>
+            <p class="eyebrow">Фаза 1</p>
+            <h2>Самостоятелна преценка</h2>
+            <p class="section-lead">Отговорете без помощ от ИИ. След преминаване към следващата фаза тези отговори се заключват.</p>
+            <div class="form-card">
+              <fieldset class="choice-field" data-required-group>
+                <legend>1. Кой вариант бихте препоръчали?</legend>
+                <div class="choice-row">
+                  <label><input type="radio" name="baseline.preferred" value="A" required><span><b>A</b> Запазване</span></label>
+                  <label><input type="radio" name="baseline.preferred" value="B"><span><b>B</b> Намаляване</span></label>
+                  <label><input type="radio" name="baseline.preferred" value="C"><span><b>C</b> Еднакви такси</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="allocation" data-allocation="baseline">
+                <legend>2. Разпределете точно 100 точки</legend>
+                <div class="three-cols">
+                  <label>Вариант A<input type="number" name="baseline.points_a" min="0" max="100" required></label>
+                  <label>Вариант B<input type="number" name="baseline.points_b" min="0" max="100" required></label>
+                  <label>Вариант C<input type="number" name="baseline.points_c" min="0" max="100" required></label>
+                </div>
+                <div class="total-line">Общо: <strong data-total>0</strong> / 100</div>
+              </fieldset>
+              <label class="range-field"><span>3. Колко сте уверени в решението си?</span><output data-for="baseline.confidence">50</output><input type="range" name="baseline.confidence" min="0" max="100" value="50" required><small>0 — изобщо не съм уверен · 100 — напълно съм уверен</small></label>
+              <label>4. Кое съображение беше най-важно за решението Ви?<textarea name="baseline.rationale" rows="5" required maxlength="4000"></textarea></label>
+            </div>
+          </section>
+
+          <section class="step" data-step="4" hidden>
+            <p class="eyebrow">Фаза 2</p>
+            <h2>Работа с ИИ</h2>
+            <p class="section-lead">Използвайте предоставения ИИ асистент така, както бихте го използвали за професионална препоръка. Копирайте точния prompt и получения отговор без редакция.</p>
+            <div class="callout"><strong>Необходими са от 3 до 5 взаимодействия.</strong><p>Взаимодействия 1–3 са задължителни. Взаимодействия 4–5 са по избор, но ако започнете някое от тях, попълнете и двете полета.</p></div>
+            <div id="interactions-container"></div>
+            <label class="form-card transcript">Пълен transcript на разговора <span class="optional">незадължително резервно копие</span><textarea name="full_transcript" rows="10" maxlength="80000" placeholder="Поставете целия разговор тук, ако използваният ИИ го позволява."></textarea></label>
+          </section>
+
+          <section class="step" data-step="5" hidden>
+            <p class="eyebrow">След работата с ИИ</p>
+            <h2>Повторна и окончателна преценка</h2>
+            <div class="form-card">
+              <fieldset class="choice-field" data-required-group>
+                <legend>1. Кой вариант бихте препоръчали сега?</legend>
+                <div class="choice-row">
+                  <label><input type="radio" name="after_ai.preferred" value="A" required><span><b>A</b> Запазване</span></label>
+                  <label><input type="radio" name="after_ai.preferred" value="B"><span><b>B</b> Намаляване</span></label>
+                  <label><input type="radio" name="after_ai.preferred" value="C"><span><b>C</b> Еднакви такси</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="allocation" data-allocation="after_ai">
+                <legend>2. Разпределете отново точно 100 точки</legend>
+                <div class="three-cols">
+                  <label>Вариант A<input type="number" name="after_ai.points_a" min="0" max="100" required></label>
+                  <label>Вариант B<input type="number" name="after_ai.points_b" min="0" max="100" required></label>
+                  <label>Вариант C<input type="number" name="after_ai.points_c" min="0" max="100" required></label>
+                </div>
+                <div class="total-line">Общо: <strong data-total>0</strong> / 100</div>
+              </fieldset>
+              <label class="range-field"><span>3. Колко сте уверени сега?</span><output data-for="after_ai.confidence">50</output><input type="range" name="after_ai.confidence" min="0" max="100" value="50" required><small>0 — изобщо не съм уверен · 100 — напълно съм уверен</small></label>
+              <label>4. Кое съображение беше най-важно за окончателното Ви решение?<textarea name="after_ai.rationale" rows="5" required maxlength="4000"></textarea></label>
+            </div>
+
+            <div class="form-card">
+              <label class="range-field"><span>До каква степен разговорът с ИИ повлия на преценката Ви?</span><output data-for="after_ai.influence">50</output><input type="range" name="after_ai.influence" min="0" max="100" value="50" required><small>0 — изобщо не повлия · 100 — повлия в много голяма степен</small></label>
+              <h3>Оценете всяко твърдение от 1 до 7</h3>
+              <div class="likert-list" id="likert-list"></div>
+            </div>
+
+            <div class="form-card">
+              <fieldset class="binary-field" data-required-group>
+                <legend>Преди окончателното решение искате ли да разгледате по-подробно първоначалните данни и допускания?</legend>
+                <label><input type="radio" name="after_ai.verify_evidence" value="yes" required><span>Да</span></label>
+                <label><input type="radio" name="after_ai.verify_evidence" value="no"><span>Не</span></label>
+              </fieldset>
+              <fieldset class="choice-field" data-required-group>
+                <legend>Кой вариант потвърждавате като окончателна препоръка?</legend>
+                <div class="choice-row">
+                  <label><input type="radio" name="after_ai.final_preferred" value="A" required><span><b>A</b> Запазване</span></label>
+                  <label><input type="radio" name="after_ai.final_preferred" value="B"><span><b>B</b> Намаляване</span></label>
+                  <label><input type="radio" name="after_ai.final_preferred" value="C"><span><b>C</b> Еднакви такси</span></label>
+                </div>
+              </fieldset>
+              <label class="range-field"><span>Колко сте уверени в окончателното решение?</span><output data-for="after_ai.final_confidence">50</output><input type="range" name="after_ai.final_confidence" min="0" max="100" value="50" required><small>0 — изобщо не съм уверен · 100 — напълно съм уверен</small></label>
+            </div>
+          </section>
+
+          <section class="step" data-step="6" hidden>
+            <p class="eyebrow">Последни въпроси</p>
+            <h2>Опит с генеративен ИИ</h2>
+            <div class="form-card">
+              <label>Колко често използвате генеративен ИИ в професионалната си работа?
+                <select name="experience.frequency" required><option value="">Изберете</option><option>Никога</option><option>Рядко</option><option>Понякога</option><option>Често</option><option>Почти ежедневно</option></select>
+              </label>
+              <div id="experience-binary"></div>
+              <fieldset class="binary-field" data-required-group>
+                <legend>Възрастова група</legend>
+                <label><input type="radio" name="experience.age_group" value="До 35 години" required><span>До 35 години</span></label>
+                <label><input type="radio" name="experience.age_group" value="Над 35 години"><span>Над 35 години</span></label>
+              </fieldset>
+            </div>
+          </section>
+
+          <section class="step" data-step="7" hidden>
+            <p class="eyebrow">Проверка преди завършване</p>
+            <h2>Преглед и PDF</h2>
+            <p class="section-lead">Проверете обобщението. PDF файлът ще съдържа всички отговори и пълния текст на взаимодействията с ИИ.</p>
+            <div id="review-content"></div>
+            <div id="pdf-errors" class="error-panel" role="alert" hidden></div>
+            <div class="download-card">
+              <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF и го предайте според инструкциите на изследователя. На безплатния Render план сървърните файлове не са постоянно хранилище.</p></div>
+              <button id="download-pdf" class="button primary large" type="button">Изтегли PDF</button>
+            </div>
+            <div class="debrief"><strong>Информация след експеримента</strong><p>Изследването разглежда как хората използват генеративен ИИ при формиране на професионална преценка. Интерес представляват промените в преценката и увереността, въпросите към ИИ, търсенето на противоположни аргументи и проверката на доказателствата. Не се оценява индивидуалната компетентност.</p></div>
+          </section>
+
+          <footer class="form-footer">
+            <button id="back-button" class="button secondary" type="button">Назад</button>
+            <span id="step-counter">Стъпка 1 от 8</span>
+            <button id="next-button" class="button primary" type="button">Продължи</button>
+          </footer>
+        </form>
+      </div>
+    </section>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
