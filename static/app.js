@@ -7,6 +7,7 @@ const appState = {
   saving: false,
   clockTimer: null,
   timeExpired: false,
+  dialogReturnFocus: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -323,6 +324,52 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
+function downloadLocalBackup() {
+  collectForm();
+  appState.data.local_backup_at = new Date().toISOString();
+  saveLocal();
+  const safeCode = String(appState.data.participant_code || "participant").replace(/[^A-Za-zА-Яа-я0-9_-]/g, "-");
+  const date = new Date().toISOString().replace(/[:.]/g, "-");
+  const blob = new Blob([JSON.stringify(appState.data, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `albena-cherнова-${safeCode}-${date}.json`;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function safeExit() {
+  const confirmed = window.confirm("Ще бъде изтеглено локално копие на черновата и сесията ще бъде затворена. Да продължим ли?");
+  if (!confirmed) return;
+  const button = $("#safe-exit-button");
+  button.disabled = true;
+  downloadLocalBackup();
+  showToast("Локалното копие е запазено.");
+  await saveServer();
+  try {
+    await fetch("/api/logout", { method: "POST" });
+  } finally {
+    window.setTimeout(() => window.location.reload(), 500);
+  }
+}
+
+function openCaseDialog() {
+  appState.dialogReturnFocus = document.activeElement;
+  const dialog = $("#case-dialog");
+  dialog.hidden = false;
+  document.body.classList.add("dialog-open");
+  $("#case-dialog-close").focus();
+}
+
+function closeCaseDialog() {
+  $("#case-dialog").hidden = true;
+  document.body.classList.remove("dialog-open");
+  appState.dialogReturnFocus?.focus?.();
+}
+
 function sessionDeadline() {
   const explicit = Date.parse(appState.data.deadline_at || "");
   if (Number.isFinite(explicit)) return explicit;
@@ -483,6 +530,13 @@ $("#study-form").addEventListener("change", scheduleSave);
 $("#next-button").addEventListener("click", nextStep);
 $("#back-button").addEventListener("click", () => showStep(appState.currentStep - 1));
 $("#download-pdf").addEventListener("click", downloadPdf);
+$("#case-dialog-content").innerHTML = $('.step[data-step="2"]').innerHTML;
+$("#case-button").addEventListener("click", openCaseDialog);
+$("#case-dialog-close").addEventListener("click", closeCaseDialog);
+$("#case-dialog").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeCaseDialog();
+});
+$("#safe-exit-button").addEventListener("click", safeExit);
 $("#time-expired-continue").addEventListener("click", () => {
   $("#time-expired-dialog").hidden = true;
   $("#download-pdf").focus();
@@ -505,6 +559,9 @@ $("#logout-button").addEventListener("click", async () => {
 window.addEventListener("beforeunload", () => {
   collectForm();
   saveLocal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#case-dialog").hidden) closeCaseDialog();
 });
 
 restoreSession();

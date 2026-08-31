@@ -17,7 +17,7 @@
         <img class="login-brand-mark" src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt="">
         <div class="brand-panel-copy">
           <p class="overline-light">Изследователска среда</p>
-          <h2>Вашата преценка.<br>Вашият процес.</h2>
+          <h2>Вашата експертна преценка</h2>
           <p>Структурирано изследване за ролята на генеративния ИИ при работа с публични политики.</p>
         </div>
         <div class="session-facts">
@@ -35,12 +35,12 @@
           <span class="status-pill"><i></i> За поканени участници</span>
           <p class="eyebrow">Експеримент Албена</p>
           <h1 id="login-title">Професионална преценка и генеративен ИИ</h1>
-          <p class="lead">Въведете предоставения Ви код, за да започнете или да продължите запазена чернова.</p>
+          <p class="lead">Въведете уникален код, който да Ви представя, например <strong>Alb_Einstein</strong>. Кодът е важен, за да продължите запазена чернова, и не трябва да съдържа интервали.</p>
         </div>
         <form id="login-form" novalidate>
           <label for="participant-code">Код на участника</label>
           <div class="login-row">
-            <input id="participant-code" name="participant_code" autocomplete="off" maxlength="40" required placeholder="напр. ALB-017">
+            <input id="participant-code" name="participant_code" autocomplete="off" maxlength="40" required placeholder="напр. Alb_Einstein">
             <button class="button primary" type="submit"><span>Продължи</span><b aria-hidden="true">→</b></button>
           </div>
           <p id="login-error" class="field-error" role="alert"></p>
@@ -56,6 +56,10 @@
       <div id="session-timer" class="session-timer" role="timer" aria-label="Оставащо време">
         <span>Оставащо време</span>
         <strong id="timer-display">45:00</strong>
+      </div>
+      <div class="session-tools" aria-label="Бързи действия">
+        <button id="case-button" class="case-hot-button" type="button"><span aria-hidden="true">⚡</span> Заданието</button>
+        <button id="safe-exit-button" class="safe-exit-button" type="button"><span aria-hidden="true">↓</span> Запази копие и излез</button>
       </div>
       <aside class="sidebar">
         <div class="side-brand"><img src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt=""><div><strong>Експеримент</strong><small>Албена</small></div></div>
@@ -291,6 +295,15 @@
       </div>
     </section>
   </main>
+  <div id="case-dialog" class="case-dialog" role="dialog" aria-modal="true" aria-labelledby="case-dialog-title" hidden>
+    <div class="case-dialog-panel">
+      <div class="case-dialog-head">
+        <div><p class="eyebrow">Бърз достъп</p><h2 id="case-dialog-title">Заданието</h2></div>
+        <button id="case-dialog-close" class="dialog-close" type="button" aria-label="Затвори заданието">×</button>
+      </div>
+      <div id="case-dialog-content" class="case-dialog-content"></div>
+    </div>
+  </div>
   <div id="time-expired-dialog" class="time-expired-dialog" role="dialog" aria-modal="true" aria-labelledby="time-expired-title" hidden>
     <div class="time-expired-card">
       <p class="eyebrow">Край на сесията</p>

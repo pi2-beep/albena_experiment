@@ -208,6 +208,22 @@ h4 { margin-bottom: .35rem; }
 }
 .session-timer span { display: block; font-size: .64rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .session-timer strong { display: block; color: #075c96; font-size: 1.2rem; font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+.session-tools { position: fixed; z-index: 17; left: 42px; bottom: 38px; display: grid; gap: .55rem; width: 218px; }
+.session-tools button { min-height: 43px; border: 0; border-radius: 11px; padding: .65rem .8rem; font-size: .78rem; font-weight: 850; box-shadow: 0 9px 26px rgba(2,37,63,.25); }
+.case-hot-button { color: #263548; background: #ffd300; }
+.case-hot-button:hover { background: #ffe25c; transform: translateY(-1px); }
+.safe-exit-button { color: white; background: #0b6f9f; }
+.safe-exit-button:hover { background: #08577d; transform: translateY(-1px); }
+.session-tools button:disabled { cursor: wait; opacity: .7; }
+.case-dialog { position: fixed; z-index: 26; inset: 0; display: grid; place-items: center; padding: 28px; background: rgba(4,36,61,.78); backdrop-filter: blur(6px); }
+.case-dialog-panel { width: min(1040px, 100%); max-height: calc(100vh - 56px); overflow: auto; padding: 2rem; background: #fbfcfd; border-radius: 22px; box-shadow: 0 30px 100px rgba(0,0,0,.38); }
+.case-dialog-head { position: sticky; z-index: 2; top: -2rem; display: flex; justify-content: space-between; align-items: start; margin: -2rem -2rem 1rem; padding: 1.35rem 2rem 1rem; background: rgba(251,252,253,.97); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+.case-dialog-head .eyebrow { margin-bottom: .2rem; }
+.case-dialog-head h2 { margin: 0; font-size: 2rem; }
+.dialog-close { display: grid; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 50%; color: white; background: #075c96; font-size: 1.6rem; line-height: 1; }
+.case-dialog-content > .eyebrow, .case-dialog-content > h2, .case-dialog-content > .section-lead { display: none; }
+.case-dialog-content .callout.no-ai { margin-bottom: 0; }
+body.dialog-open { overflow: hidden; }
 .time-expired-dialog { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(82,0,0,.78); backdrop-filter: blur(5px); }
 .time-expired-card { width: min(520px, 100%); padding: 2.2rem; background: white; border: 5px solid #d22020; border-radius: 20px; box-shadow: 0 30px 90px rgba(75,0,0,.4); }
 .time-expired-card h2 { color: #a20f0f; }
@@ -471,6 +487,7 @@ body::before {
   #study-form { min-height: calc(100vh - 70px); }
   .session-timer { top: 8px; right: 72px; min-width: 104px; padding: .35rem .55rem; }
   .session-timer span { display: none; }
+  .session-tools { left: auto; right: 14px; bottom: 76px; width: 190px; }
 }
 
 @media (max-width: 980px) {
@@ -506,4 +523,11 @@ body::before {
   .timeline, .info-grid, .option-cards, .evidence-grid, .two-cols, .three-cols, .choice-row { grid-template-columns: 1fr; }
   .form-footer { padding: 12px 16px; }
   .session-timer { right: 58px; }
+  .session-tools { right: 10px; bottom: 72px; width: auto; }
+  .session-tools button { width: 48px; min-height: 48px; padding: 0; overflow: hidden; color: transparent; font-size: 0; border-radius: 50%; }
+  .session-tools button span { color: #263548; font-size: 1.15rem; }
+  .session-tools .safe-exit-button span { color: white; }
+  .case-dialog { padding: 0; }
+  .case-dialog-panel { max-height: 100vh; min-height: 100vh; padding: 1.2rem; border-radius: 0; }
+  .case-dialog-head { top: -1.2rem; margin: -1.2rem -1.2rem 1rem; padding: 1rem 1.2rem; }
 }
