@@ -504,7 +504,7 @@ async function downloadPdf() {
     errors.hidden = false;
   } finally {
     button.disabled = false;
-    button.textContent = "Изтегли PDF";
+    button.textContent = "Подаване и локален запис на PDF";
   }
 }
 

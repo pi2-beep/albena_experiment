@@ -236,6 +236,7 @@
             <div class="form-card">
               <label class="range-field"><span>До каква степен разговорът с ИИ повлия на преценката Ви?</span><output data-for="after_ai.influence">50</output><input type="range" name="after_ai.influence" min="0" max="100" value="50" required><small>0 — изобщо не повлия · 100 — повлия в много голяма степен</small></label>
               <h3>Оценете всяко твърдение от 1 до 7</h3>
+              <p class="scale-guide"><strong>1 — най-ниска оценка</strong><span>до</span><strong>7 — най-висока оценка</strong></p>
               <div class="likert-list" id="likert-list"></div>
             </div>
 
@@ -281,7 +282,7 @@
             <div id="pdf-errors" class="error-panel" role="alert" hidden></div>
             <div class="download-card">
               <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF като лично резервно копие. При успешно изтегляне системата записва копие и в частния архив на изследването.</p></div>
-              <button id="download-pdf" class="button primary large" type="button">Изтегли PDF</button>
+              <button id="download-pdf" class="button large pdf-submit-button" type="button">Подаване и локален запис на PDF</button>
             </div>
             <div class="debrief"><strong>Информация след експеримента</strong><p>Изследването разглежда как хората използват генеративен ИИ при формиране на професионална преценка. Интерес представляват промените в преценката и увереността, въпросите към ИИ, търсенето на противоположни аргументи и проверката на доказателствата. Не се оценява индивидуалната компетентност.</p></div>
           </section>
