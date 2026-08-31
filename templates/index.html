@@ -22,7 +22,7 @@
         </div>
         <div class="session-facts">
           <div><span>01</span><p><strong>Анонимен код</strong><small>Без име и имейл</small></p></div>
-          <div><span>02</span><p><strong>8 ясни стъпки</strong><small>Черновата се запазва</small></p></div>
+          <div><span>02</span><p><strong>45 минути</strong><small>Таймерът започва при вход</small></p></div>
           <div><span>03</span><p><strong>Финален PDF</strong><small>Всички данни в един файл</small></p></div>
         </div>
         <p class="brand-panel-footer">Институт по публична администрация</p>
@@ -53,6 +53,10 @@
     </section>
 
     <section id="app-view" class="app-layout" hidden>
+      <div id="session-timer" class="session-timer" role="timer" aria-label="Оставащо време">
+        <span>Оставащо време</span>
+        <strong id="timer-display">45:00</strong>
+      </div>
       <aside class="sidebar">
         <div class="side-brand"><img src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt=""><div><strong>Експеримент</strong><small>Албена</small></div></div>
         <div class="participant-chip"><span>Код</span><strong id="participant-label"></strong></div>
@@ -272,7 +276,7 @@
             <div id="review-content"></div>
             <div id="pdf-errors" class="error-panel" role="alert" hidden></div>
             <div class="download-card">
-              <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF и го предайте според инструкциите на изследователя. На безплатния Render план сървърните файлове не са постоянно хранилище.</p></div>
+              <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF като лично резервно копие. При успешно изтегляне системата записва копие и в частния архив на изследването.</p></div>
               <button id="download-pdf" class="button primary large" type="button">Изтегли PDF</button>
             </div>
             <div class="debrief"><strong>Информация след експеримента</strong><p>Изследването разглежда как хората използват генеративен ИИ при формиране на професионална преценка. Интерес представляват промените в преценката и увереността, въпросите към ИИ, търсенето на противоположни аргументи и проверката на доказателствата. Не се оценява индивидуалната компетентност.</p></div>
@@ -287,6 +291,14 @@
       </div>
     </section>
   </main>
+  <div id="time-expired-dialog" class="time-expired-dialog" role="dialog" aria-modal="true" aria-labelledby="time-expired-title" hidden>
+    <div class="time-expired-card">
+      <p class="eyebrow">Край на сесията</p>
+      <h2 id="time-expired-title">Времето изтече</h2>
+      <p>45-минутният лимит приключи. Попълването е заключено, а наличните Ви отговори са подготвени за PDF.</p>
+      <button id="time-expired-continue" class="button primary" type="button">Преглед и изтегляне</button>
+    </div>
+  </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>

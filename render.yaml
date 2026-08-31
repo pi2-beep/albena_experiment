@@ -11,4 +11,7 @@ services:
         value: 3.12.11
       - key: SECRET_KEY
         generateValue: true
-
+      - key: RESULTS_GITHUB_REPOSITORY
+        value: pi2-beep/albena_experiment_results
+      - key: RESULTS_GITHUB_SSH_KEY
+        sync: false

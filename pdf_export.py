@@ -182,7 +182,9 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
                 ("Код на участника", data.get("participant_code")),
                 ("Дата на съгласие", consent.get("date")),
                 ("Начало на сесията", data.get("created_at")),
+                ("Краен срок", data.get("deadline_at")),
                 ("Завършване", data.get("completed_at") or datetime.now().isoformat(timespec="seconds")),
+                ("Изтекъл лимит от 45 минути", data.get("time_limit_reached", False)),
             ]
         ),
         Spacer(1, 8 * mm),

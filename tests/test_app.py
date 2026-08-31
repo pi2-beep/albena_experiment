@@ -3,7 +3,9 @@ from __future__ import annotations
 import io
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 import app as study_app
 from pypdf import PdfReader
@@ -124,7 +126,53 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("details", response.get_json())
 
+    def test_completed_pdf_is_downloaded_and_archived(self):
+        self.login()
+        output = Path(self.temp_dir.name) / "result.pdf"
+        with mock.patch.object(study_app, "pdf_path_for", return_value=output), mock.patch.object(
+            study_app, "archive_pdf", return_value="results/2026-08-31/TEST-01-example.pdf"
+        ) as archive:
+            response = self.client.post("/api/pdf", json=complete_payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["X-Results-Archive"], "saved")
+        self.assertEqual(response.mimetype, "application/pdf")
+        archive.assert_called_once()
+        response.close()
+
+    def test_archive_failure_does_not_block_pdf_download(self):
+        self.login()
+        output = Path(self.temp_dir.name) / "result.pdf"
+        with mock.patch.object(study_app, "pdf_path_for", return_value=output), mock.patch.object(
+            study_app, "archive_pdf", side_effect=study_app.ResultArchiveError("unavailable")
+        ):
+            response = self.client.post("/api/pdf", json=complete_payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["X-Results-Archive"], "failed")
+        response.close()
+
+    def test_expired_session_accepts_partial_pdf_and_blocks_edits(self):
+        self.login()
+        with self.client.session_transaction() as browser_session:
+            sid = browser_session["sid"]
+        record = study_app.load_record(sid)
+        record["deadline_at"] = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+        study_app.save_record(sid, record)
+
+        update = self.client.put("/api/session", json={"baseline": {"rationale": "Незавършен отговор"}})
+        self.assertEqual(update.status_code, 409)
+        self.assertTrue(update.get_json()["time_limit_reached"])
+
+        output = Path(self.temp_dir.name) / "expired.pdf"
+        partial = {"baseline": {"rationale": "Незавършен отговор"}, "interactions": []}
+        with mock.patch.object(study_app, "pdf_path_for", return_value=output), mock.patch.object(
+            study_app, "archive_pdf", return_value=None
+        ):
+            response = self.client.post("/api/pdf", json=partial)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["X-Results-Archive"], "disabled")
+        self.assertGreater(len(response.data), 10_000)
+        response.close()
+
 
 if __name__ == "__main__":
     unittest.main()
-

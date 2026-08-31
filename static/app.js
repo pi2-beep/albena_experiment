@@ -1,9 +1,12 @@
 const TOTAL_STEPS = 8;
+const SESSION_DURATION_MS = 45 * 60 * 1000;
 const appState = {
   currentStep: 0,
   data: {},
   saveTimer: null,
   saving: false,
+  clockTimer: null,
+  timeExpired: false,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -168,6 +171,7 @@ function setSaveStatus(text) {
 }
 
 function scheduleSave() {
+  if (appState.timeExpired) return;
   collectForm();
   saveLocal();
   setSaveStatus("Запазване…");
@@ -176,7 +180,7 @@ function scheduleSave() {
 }
 
 async function saveServer() {
-  if (!appState.data.participant_code || appState.saving) return;
+  if (!appState.data.participant_code || appState.saving || appState.timeExpired) return;
   appState.saving = true;
   try {
     const response = await fetch("/api/session", {
@@ -260,6 +264,7 @@ function showStep(index, skipScroll = false) {
 }
 
 function nextStep() {
+  if (appState.timeExpired) return;
   if (!validateStep(appState.currentStep)) return;
   collectForm();
   if (appState.currentStep === 1 && !appState.data.consent.accepted_at) {
@@ -318,6 +323,51 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 2600);
 }
 
+function sessionDeadline() {
+  const explicit = Date.parse(appState.data.deadline_at || "");
+  if (Number.isFinite(explicit)) return explicit;
+  const created = Date.parse(appState.data.created_at || "");
+  return Number.isFinite(created) ? created + SESSION_DURATION_MS : Date.now() + SESSION_DURATION_MS;
+}
+
+function formatRemaining(milliseconds) {
+  const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function lockExpiredSession() {
+  if (appState.timeExpired) return;
+  collectForm();
+  appState.timeExpired = true;
+  appState.data.time_limit_reached = true;
+  appState.data.time_limit_reached_at = new Date().toISOString();
+  saveLocal();
+  document.body.classList.add("time-expired");
+  document.body.classList.remove("time-critical");
+  for (const field of $$("#study-form [name]")) field.disabled = true;
+  for (const button of $$("#step-nav button, #back-button, #next-button")) button.disabled = true;
+  setSaveStatus("Времето изтече — попълването е заключено");
+  showStep(TOTAL_STEPS - 1, true);
+  $("#time-expired-dialog").hidden = false;
+}
+
+function updateSessionClock() {
+  const remaining = sessionDeadline() - Date.now();
+  $("#timer-display").textContent = formatRemaining(remaining);
+  document.body.classList.toggle("time-critical", remaining > 0 && remaining <= 60_000);
+  if (remaining <= 0) {
+    clearInterval(appState.clockTimer);
+    lockExpiredSession();
+  }
+}
+
+function startSessionClock() {
+  clearInterval(appState.clockTimer);
+  updateSessionClock();
+  if (!appState.timeExpired) appState.clockTimer = setInterval(updateSessionClock, 250);
+}
+
 async function login(code) {
   const response = await fetch("/api/login", {
     method: "POST",
@@ -339,6 +389,7 @@ function enterApp() {
   $("#app-view").hidden = false;
   fillForm();
   showStep(0, true);
+  startSessionClock();
 }
 
 async function restoreSession() {
@@ -379,6 +430,7 @@ async function downloadPdf() {
       errors.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    const archiveStatus = response.headers.get("X-Results-Archive") || "disabled";
     const blob = await response.blob();
     const disposition = response.headers.get("Content-Disposition") || "";
     const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
@@ -391,7 +443,15 @@ async function downloadPdf() {
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-    showToast("PDF файлът е изтеглен.");
+    if (archiveStatus === "saved") {
+      showToast("PDF файлът е изтеглен и записан в защитения архив.");
+    } else if (archiveStatus === "failed") {
+      errors.innerHTML = "<strong>PDF файлът е изтеглен, но резервното копие в GitHub не беше записано.</strong> Предайте изтегления файл на изследователя.";
+      errors.hidden = false;
+      showToast("PDF е изтеглен; архивирането не успя.");
+    } else {
+      showToast("PDF файлът е изтеглен.");
+    }
   } catch {
     errors.textContent = "Възникна грешка при създаването на PDF. Проверете връзката и опитайте отново.";
     errors.hidden = false;
@@ -413,6 +473,7 @@ $("#login-form").addEventListener("submit", async (event) => {
 });
 
 $("#study-form").addEventListener("input", (event) => {
+  if (appState.timeExpired) return;
   if (event.target.matches('input[type="range"]')) updateRanges();
   if (event.target.closest("[data-allocation]")) updateAllocations();
   event.target.closest(".invalid-block")?.classList.remove("invalid-block");
@@ -422,9 +483,14 @@ $("#study-form").addEventListener("change", scheduleSave);
 $("#next-button").addEventListener("click", nextStep);
 $("#back-button").addEventListener("click", () => showStep(appState.currentStep - 1));
 $("#download-pdf").addEventListener("click", downloadPdf);
+$("#time-expired-continue").addEventListener("click", () => {
+  $("#time-expired-dialog").hidden = true;
+  $("#download-pdf").focus();
+});
 
 for (const button of $$("#step-nav button")) {
   button.addEventListener("click", () => {
+    if (appState.timeExpired) return;
     const target = Number(button.dataset.step);
     if (target <= appState.currentStep) showStep(target);
   });
