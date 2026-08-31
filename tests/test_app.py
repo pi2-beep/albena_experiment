@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import app as study_app
+import result_store
 from pypdf import PdfReader
 
 
@@ -172,6 +173,10 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(response.headers["X-Results-Archive"], "disabled")
         self.assertGreater(len(response.data), 10_000)
         response.close()
+
+    def test_github_host_keys_are_available_without_network_lookup(self):
+        self.assertIn("github.com ssh-ed25519", result_store.GITHUB_KNOWN_HOSTS)
+        self.assertIn("github.com ecdsa-sha2-nistp256", result_store.GITHUB_KNOWN_HOSTS)
 
 
 if __name__ == "__main__":

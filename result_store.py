@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import shutil
@@ -9,7 +8,14 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.request import Request, urlopen
+
+
+# Official GitHub SSH host keys from https://api.github.com/meta.
+# Keeping them locally avoids unauthenticated API rate limits on shared Render IPs.
+GITHUB_KNOWN_HOSTS = """github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+"""
 
 
 class ResultArchiveError(RuntimeError):
@@ -30,21 +36,6 @@ def _run_git(arguments: list[str], *, cwd: Path | None, environment: dict[str, s
         )
     except (OSError, subprocess.SubprocessError) as error:
         raise ResultArchiveError("GitHub архивът временно не е достъпен.") from error
-
-
-def _github_known_hosts() -> str:
-    request = Request(
-        "https://api.github.com/meta",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "albena-experiment"},
-    )
-    try:
-        with urlopen(request, timeout=15) as response:
-            keys = json.load(response).get("ssh_keys", [])
-    except (OSError, ValueError, TypeError) as error:
-        raise ResultArchiveError("SSH идентичността на GitHub не може да бъде проверена.") from error
-    if not keys:
-        raise ResultArchiveError("GitHub не предостави SSH ключове на хоста.")
-    return "".join(f"github.com {key}\n" for key in keys)
 
 
 def _archive_name(record: dict, session_id: str) -> tuple[str, str]:
@@ -70,8 +61,6 @@ def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
 
     day, filename = _archive_name(record, session_id)
     relative_path = Path("results") / day / filename
-    known_hosts = _github_known_hosts()
-
     with tempfile.TemporaryDirectory(prefix="albena-results-") as temporary:
         temporary_path = Path(temporary)
         key_path = temporary_path / "deploy-key"
@@ -79,7 +68,7 @@ def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
         checkout = temporary_path / "repository"
         key_path.write_text(f"{private_key.rstrip()}\n", encoding="utf-8")
         key_path.chmod(0o600)
-        hosts_path.write_text(known_hosts, encoding="utf-8")
+        hosts_path.write_text(GITHUB_KNOWN_HOSTS, encoding="utf-8")
 
         environment = os.environ.copy()
         environment["GIT_SSH_COMMAND"] = (
