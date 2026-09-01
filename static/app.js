@@ -455,6 +455,39 @@ async function restoreSession() {
   }
 }
 
+function filenameFromDisposition(disposition) {
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1]);
+    } catch {
+      // Continue with the ASCII filename supplied by the server.
+    }
+  }
+  const plain = disposition.match(/filename="?([^";]+)"?/i);
+  return plain?.[1] || "rezultati.pdf";
+}
+
+function usesIosDownloadFallback() {
+  const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const ipadDesktopMode = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  return iosDevice || ipadDesktopMode;
+}
+
+function downloadBlob(blob, filename) {
+  const urlApi = window.URL || window.webkitURL;
+  if (!urlApi?.createObjectURL) throw new Error("Браузърът не поддържа локално Blob изтегляне.");
+  const url = urlApi.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => urlApi.revokeObjectURL(url), 60_000);
+}
+
 async function downloadPdf() {
   const errors = $("#pdf-errors");
   errors.hidden = true;
@@ -464,7 +497,10 @@ async function downloadPdf() {
   const button = $("#download-pdf");
   button.disabled = true;
   button.textContent = "Генериране и запис…";
+  let pdfReadyForFallback = false;
+  let downloadStage = "подготовка на заявката";
   try {
+    downloadStage = "изпращане към сървъра";
     const response = await fetch("/api/pdf", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -484,6 +520,8 @@ async function downloadPdf() {
       errors.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    pdfReadyForFallback = true;
+    downloadStage = "получаване на PDF";
     const archiveStatus = response.headers.get("X-Results-Archive") || "disabled";
     const pdfArchiveStatus = response.headers.get("X-Results-PDF-Archive") || "неизвестно";
     const jsonArchiveStatus = response.headers.get("X-Results-JSON-Archive") || "неизвестно";
@@ -492,16 +530,13 @@ async function downloadPdf() {
     const generatedAt = response.headers.get("X-Results-Generated-At") || new Date().toISOString();
     const blob = await response.blob();
     const disposition = response.headers.get("Content-Disposition") || "";
-    const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
-    const filename = match ? decodeURIComponent(match[1].replace(/\"/g, "")) : "rezultati.pdf";
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    const filename = filenameFromDisposition(disposition);
+    downloadStage = "локално изтегляне";
+    if (usesIosDownloadFallback()) {
+      window.location.assign("/api/pdf/download");
+    } else {
+      downloadBlob(blob, filename);
+    }
     if (archiveStatus === "saved") {
       showToast("PDF файлът е изтеглен и записан в защитения архив.");
     } else if (archiveStatus === "partial") {
@@ -537,9 +572,20 @@ async function downloadPdf() {
       showToast("PDF файлът е изтеглен.");
     }
   } catch (downloadError) {
+    if (pdfReadyForFallback && downloadStage === "локално изтегляне") {
+      try {
+        window.location.assign("/api/pdf/download");
+        errors.classList.add("info-panel");
+        errors.innerHTML = "<strong>Използван е резервният начин за изтегляне.</strong><p>PDF файлът е генериран и браузърът трябва да започне директно сървърно изтегляне.</p>";
+        errors.hidden = false;
+        return;
+      } catch {
+        // Show the diagnostic log below if the regular server URL also fails.
+      }
+    }
     const diagnosticLog = [
       `Време: ${new Date().toISOString()}`,
-      "Етап: връзка, генериране или локално изтегляне",
+      `Етап: ${downloadStage}`,
       `Браузърът отчита интернет връзка: ${navigator.onLine ? "да" : "не"}`,
       `Грешка: ${downloadError?.message || "неизвестна грешка"}`,
     ].join("\n");

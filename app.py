@@ -15,7 +15,7 @@ from result_store import ArchiveResult, ResultArchiveError, archive_pdf
 
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = os.environ.get("APP_VERSION", "1.4.0")
+APP_VERSION = os.environ.get("APP_VERSION", "1.4.1")
 SESSION_DIR = ROOT / "data" / "sessions"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
 try:
@@ -283,6 +283,30 @@ def create_pdf():
     response.headers["Cache-Control"] = "no-store, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@app.get("/api/pdf/download")
+def download_existing_pdf():
+    """Download the last generated PDF through a regular URL for iOS/Safari."""
+    sid = current_id()
+    if not sid:
+        return jsonify(error="Сесията е изтекла."), 401
+    record = load_record(sid)
+    output = pdf_path_for(sid)
+    if not record or not output.exists():
+        return jsonify(error="Няма подготвен PDF файл. Изберете „Генерирай и запиши“ отново."), 404
+    code = re.sub(r"[^A-Za-zА-Яа-я0-9_-]", "-", str(record.get("participant_code", "participant")))
+    response = send_file(
+        output,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"rezultati-{code}.pdf",
+    )
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-PDF-Download-Mode"] = "server-fallback"
     return response
 
 

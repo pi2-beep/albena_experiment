@@ -148,6 +148,24 @@ class AppTestCase(unittest.TestCase):
         archive.assert_called_once()
         response.close()
 
+    def test_server_pdf_download_fallback_for_ios(self):
+        self.login()
+        output = Path(self.temp_dir.name) / "ios-result.pdf"
+        with mock.patch.object(study_app, "pdf_path_for", return_value=output), mock.patch.object(
+            study_app, "archive_pdf", return_value=None
+        ):
+            generated = self.client.post("/api/pdf", json=complete_payload())
+            self.assertEqual(generated.status_code, 200)
+            generated.close()
+            fallback = self.client.get("/api/pdf/download")
+        self.assertEqual(fallback.status_code, 200)
+        self.assertEqual(fallback.mimetype, "application/pdf")
+        self.assertEqual(fallback.headers["X-PDF-Download-Mode"], "server-fallback")
+        self.assertEqual(fallback.headers["Cache-Control"], "no-store, private")
+        self.assertTrue(fallback.data.startswith(b"%PDF"))
+        self.assertGreater(len(fallback.data), 10_000)
+        fallback.close()
+
     def test_archive_failure_does_not_block_pdf_download(self):
         self.login()
         output = Path(self.temp_dir.name) / "result.pdf"
@@ -195,6 +213,8 @@ class AppTestCase(unittest.TestCase):
         javascript = (study_app.ROOT / "static" / "app.js").read_text(encoding="utf-8")
         self.assertIn("Генерирай и запиши", template)
         self.assertIn('button.textContent = "Генерирай и запиши"', javascript)
+        self.assertIn('window.location.assign("/api/pdf/download")', javascript)
+        self.assertIn("filenameFromDisposition", javascript)
         self.assertNotIn("Подаване и локален запис на PDF", template)
 
     def test_expired_session_accepts_partial_pdf_and_blocks_edits(self):

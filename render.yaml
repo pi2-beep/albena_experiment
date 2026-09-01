@@ -10,7 +10,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.11
       - key: APP_VERSION
-        value: 1.4.0
+        value: 1.4.1
       - key: SECRET_KEY
         generateValue: true
       - key: RESULTS_ARCHIVE_BACKEND
