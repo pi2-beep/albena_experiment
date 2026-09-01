@@ -493,8 +493,9 @@ async function downloadPdf() {
     if (archiveStatus === "saved") {
       showToast("PDF файлът е изтеглен и записан в защитения архив.");
     } else if (archiveStatus === "failed") {
-      errors.innerHTML = "<strong>PDF файлът е изтеглен, но резервното копие в GitHub не беше записано.</strong> Предайте изтегления файл на изследователя.";
+      errors.innerHTML = "<strong>PDF файлът е изтеглен локално, но защитеният FTP архив е недостъпен.</strong> Запазете изтегления файл и го предайте на изследователя. Можете да опитате подаването отново по-късно.";
       errors.hidden = false;
+      errors.scrollIntoView({ behavior: "smooth", block: "center" });
       showToast("PDF е изтеглен; архивирането не успя.");
     } else {
       showToast("PDF файлът е изтеглен.");

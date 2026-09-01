@@ -150,6 +150,12 @@ class AppTestCase(unittest.TestCase):
             response = self.client.post("/api/pdf", json=complete_payload())
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["X-Results-Archive"], "failed")
+        self.assertEqual(response.mimetype, "application/pdf")
+        self.assertIn("attachment", response.headers["Content-Disposition"])
+        self.assertEqual(response.headers["Cache-Control"], "no-store, private")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertTrue(response.data.startswith(b"%PDF"))
+        self.assertGreater(len(response.data), 10_000)
         response.close()
 
     def test_expired_session_accepts_partial_pdf_and_blocks_edits(self):
@@ -245,6 +251,17 @@ class AppTestCase(unittest.TestCase):
         with mock.patch.dict(os.environ, {"RESULTS_ARCHIVE_BACKEND": "ftp"}, clear=True):
             with self.assertRaises(result_store.ResultArchiveError):
                 result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
+
+    def test_ftp_backend_never_calls_github_archive(self):
+        pdf = Path(self.temp_dir.name) / "result.pdf"
+        pdf.write_bytes(b"example-pdf")
+        with mock.patch.dict(os.environ, {"RESULTS_ARCHIVE_BACKEND": "ftp"}, clear=True), mock.patch.object(
+            result_store, "_archive_to_ftp", return_value="/albena-results/result.pdf"
+        ) as ftp_archive, mock.patch.object(result_store, "_archive_to_github") as github_archive:
+            result = result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
+        self.assertEqual(result, "/albena-results/result.pdf")
+        ftp_archive.assert_called_once()
+        github_archive.assert_not_called()
 
 
 if __name__ == "__main__":

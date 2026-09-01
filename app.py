@@ -242,6 +242,9 @@ def create_pdf():
         archive_status = "failed"
     response = send_file(output, mimetype="application/pdf", as_attachment=True, download_name=f"rezultati-{code}.pdf")
     response.headers["X-Results-Archive"] = archive_status
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 
 
