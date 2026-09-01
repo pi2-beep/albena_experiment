@@ -11,7 +11,19 @@ services:
         value: 3.12.11
       - key: SECRET_KEY
         generateValue: true
-      - key: RESULTS_GITHUB_REPOSITORY
-        value: pi2-beep/albena_experiment_results
-      - key: RESULTS_GITHUB_SSH_KEY
+      - key: RESULTS_ARCHIVE_BACKEND
+        value: ftp
+      - key: RESULTS_FTP_HOST
         sync: false
+      - key: RESULTS_FTP_PORT
+        value: "21"
+      - key: RESULTS_FTP_USERNAME
+        sync: false
+      - key: RESULTS_FTP_PASSWORD
+        sync: false
+      - key: RESULTS_FTP_DIRECTORY
+        value: /albena-results
+      - key: RESULTS_FTP_TLS
+        value: "true"
+      - key: RESULTS_FTP_PASSIVE
+        value: "true"

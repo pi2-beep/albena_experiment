@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -177,6 +178,72 @@ class AppTestCase(unittest.TestCase):
     def test_github_host_keys_are_available_without_network_lookup(self):
         self.assertIn("github.com ssh-ed25519", result_store.GITHUB_KNOWN_HOSTS)
         self.assertIn("github.com ecdsa-sha2-nistp256", result_store.GITHUB_KNOWN_HOSTS)
+
+    def test_ftps_archive_uploads_pdf_and_json(self):
+        uploads: dict[str, bytes] = {}
+
+        class FakeFTPS:
+            def __init__(self, *args, **kwargs):
+                self.connected = False
+
+            def connect(self, host, port, timeout):
+                self.connected = (host, port, timeout)
+
+            def login(self, username, password):
+                self.credentials = (username, password)
+
+            def prot_p(self):
+                self.protected = True
+
+            def set_pasv(self, passive):
+                self.passive = passive
+
+            def cwd(self, _directory):
+                return None
+
+            def mkd(self, _directory):
+                return None
+
+            def storbinary(self, command, stream):
+                uploads[command.removeprefix("STOR ")] = stream.read()
+
+            def quit(self):
+                return None
+
+            def close(self):
+                return None
+
+            def delete(self, filename):
+                uploads.pop(filename, None)
+
+        pdf = Path(self.temp_dir.name) / "result.pdf"
+        pdf.write_bytes(b"example-pdf")
+        environment = {
+            "RESULTS_ARCHIVE_BACKEND": "ftp",
+            "RESULTS_FTP_HOST": "ftp.example.test",
+            "RESULTS_FTP_USERNAME": "albena",
+            "RESULTS_FTP_PASSWORD": "secret",
+            "RESULTS_FTP_DIRECTORY": "/private/results",
+            "RESULTS_FTP_TLS": "true",
+            "SECRET_KEY": "test-key",
+        }
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(
+            result_store, "FTP_TLS", FakeFTPS
+        ):
+            remote_path = result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
+
+        self.assertTrue(remote_path.startswith("/private/results/"))
+        self.assertTrue(remote_path.endswith(".pdf"))
+        self.assertEqual(next(value for key, value in uploads.items() if key.endswith(".pdf")), b"example-pdf")
+        json_data = next(value for key, value in uploads.items() if key.endswith(".json")).decode("utf-8")
+        self.assertIn('"participant_code": "TEST-01"', json_data)
+
+    def test_ftp_archive_requires_private_credentials(self):
+        pdf = Path(self.temp_dir.name) / "result.pdf"
+        pdf.write_bytes(b"example-pdf")
+        with mock.patch.dict(os.environ, {"RESULTS_ARCHIVE_BACKEND": "ftp"}, clear=True):
+            with self.assertRaises(result_store.ResultArchiveError):
+                result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
 
 
 if __name__ == "__main__":

@@ -26,14 +26,14 @@ Flask приложение за провеждане на изследванет
 
 - Сървърната сесия се съхранява като JSON в `data/sessions/`.
 - Браузърът пази резервна чернова в `localStorage` според кода на участника.
-- Генерираният PDF се записва временно в `data/pdfs/`, изпраща се към конфигуриран частен GitHub архив и веднага се изтегля.
+- Генерираният PDF се записва временно в `data/pdfs/`, изпраща се заедно с JSON копие към конфигуриран FTPS архив и веднага се изтегля.
 - Не се записват име, имейл или друг пряк идентификатор.
 
-Важно: файловата система на безплатна Render услуга е временна. Частният GitHub архив пази завършените PDF файлове независимо от рестартирането на Render. Участникът пак изтегля лично копие в края. Браузърната чернова остава само на същото устройство и в същия браузър.
+Важно: файловата система на безплатна Render услуга е временна. FTPS архивът пази завършените PDF и JSON файлове независимо от рестартирането на Render. Участникът пак изтегля лично PDF копие в края. Браузърната чернова остава само на същото устройство и в същия браузър.
 
-Архивирането се включва само когато са зададени `RESULTS_GITHUB_REPOSITORY` и `RESULTS_GITHUB_SSH_KEY`. Препоръчва се отделно частно хранилище и write deploy key, ограничен единствено до него. Ключът се задава само като Render secret и никога не се записва в Git.
+FTP архивирането се включва с `RESULTS_ARCHIVE_BACKEND=ftp`. Необходимите настройки са `RESULTS_FTP_HOST`, `RESULTS_FTP_PORT`, `RESULTS_FTP_USERNAME`, `RESULTS_FTP_PASSWORD` и `RESULTS_FTP_DIRECTORY`. По подразбиране се използват TLS и пасивен режим чрез `RESULTS_FTP_TLS=true` и `RESULTS_FTP_PASSIVE=true`.
 
-Официалните публични SSH host keys на GitHub са фиксирани локално в приложението. Така архивирането не зависи от unauthenticated GitHub Meta API заявки и техните rate limits при споделените IP адреси на безплатния Render план.
+Паролата се задава единствено като защитена променлива в Render и не се записва в Git. Обикновен FTP без TLS може да се разреши с `RESULTS_FTP_TLS=false`, но не се препоръчва, защото данните и паролата се предават некриптирано. Старият GitHub архив остава наличен като резервна реализация при `RESULTS_ARCHIVE_BACKEND=github`.
 
 ## Локално стартиране
 
@@ -81,12 +81,19 @@ python -m unittest discover -s tests -v
 - Secret environment variable: `RESULTS_GITHUB_REPOSITORY`, например `owner/private-results-repository`
 - Secret environment variable: `RESULTS_GITHUB_SSH_KEY` с частния write deploy key за архива
 
+За FTPS задайте вместо тях:
+
+- `RESULTS_ARCHIVE_BACKEND=ftp`
+- `RESULTS_FTP_HOST`, `RESULTS_FTP_PORT`, `RESULTS_FTP_USERNAME`, `RESULTS_FTP_PASSWORD`
+- `RESULTS_FTP_DIRECTORY=/albena-results`
+- `RESULTS_FTP_TLS=true` и `RESULTS_FTP_PASSIVE=true`
+
 ## Структура
 
 ```text
 app.py                 HTTP маршрути и файлови сесии
 pdf_export.py          PDF генератор с вграден шрифт за кирилица
-result_store.py        защитено архивиране на PDF в частно GitHub хранилище
+result_store.py        архивиране на PDF и JSON във FTPS или частно GitHub хранилище
 templates/index.html   стъпков формуляр
 static/app.js          логика, валидация и автозапазване
 static/styles.css      адаптивен дизайн без външни ресурси

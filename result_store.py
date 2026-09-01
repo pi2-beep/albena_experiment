@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import io
+import json
 import os
 import re
 import shutil
+import ssl
 import subprocess
 import tempfile
+from ftplib import FTP, FTP_TLS, all_errors as FTP_ERRORS
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 # Official GitHub SSH host keys from https://api.github.com/meta.
@@ -20,6 +24,12 @@ github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+V
 
 class ResultArchiveError(RuntimeError):
     """Raised when a configured results archive cannot accept a PDF."""
+
+
+def _enabled(value: str | None, *, default: bool) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _run_git(arguments: list[str], *, cwd: Path | None, environment: dict[str, str]) -> None:
@@ -48,8 +58,85 @@ def _archive_name(record: dict, session_id: str) -> tuple[str, str]:
     return day, f"{code}-{digest}.pdf"
 
 
-def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
-    """Commit a PDF to a private GitHub repository, or return None when not configured."""
+def _ftp_directory(value: str) -> str:
+    value = value.strip().replace("\\", "/") or "/albena-results"
+    parts = [part for part in PurePosixPath(value).parts if part not in {"/", "."}]
+    if any(part == ".." for part in parts):
+        raise ResultArchiveError("FTP директорията е невалидна.")
+    return "/" + "/".join(parts)
+
+
+def _ensure_ftp_directory(client: FTP, directory: str) -> None:
+    client.cwd("/")
+    for part in PurePosixPath(directory).parts:
+        if part in {"/", "."}:
+            continue
+        try:
+            client.cwd(part)
+        except FTP_ERRORS:
+            client.mkd(part)
+            client.cwd(part)
+
+
+def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
+    host = os.environ.get("RESULTS_FTP_HOST", "").strip()
+    username = os.environ.get("RESULTS_FTP_USERNAME", "").strip()
+    password = os.environ.get("RESULTS_FTP_PASSWORD", "")
+    if not host or not username or not password:
+        raise ResultArchiveError("Конфигурацията на FTP архива е непълна.")
+    try:
+        port = int(os.environ.get("RESULTS_FTP_PORT", "21"))
+    except ValueError as error:
+        raise ResultArchiveError("FTP портът е невалиден.") from error
+    if not 1 <= port <= 65535:
+        raise ResultArchiveError("FTP портът е невалиден.")
+
+    use_tls = _enabled(os.environ.get("RESULTS_FTP_TLS"), default=True)
+    passive = _enabled(os.environ.get("RESULTS_FTP_PASSIVE"), default=True)
+    base_directory = _ftp_directory(os.environ.get("RESULTS_FTP_DIRECTORY", "/albena-results"))
+    day, filename = _archive_name(record, session_id)
+    remote_directory = f"{base_directory.rstrip('/')}/{day}"
+    json_filename = f"{Path(filename).stem}.json"
+    json_bytes = json.dumps(record, ensure_ascii=False, indent=2).encode("utf-8")
+
+    client: FTP
+    if use_tls:
+        client = FTP_TLS(context=ssl.create_default_context(), timeout=30)
+    else:
+        client = FTP(timeout=30)
+
+    uploaded: list[str] = []
+    try:
+        client.connect(host, port, timeout=30)
+        client.login(username, password)
+        if isinstance(client, FTP_TLS):
+            client.prot_p()
+        client.set_pasv(passive)
+        _ensure_ftp_directory(client, remote_directory)
+        with pdf_path.open("rb") as pdf_file:
+            client.storbinary(f"STOR {filename}", pdf_file)
+        uploaded.append(filename)
+        client.storbinary(f"STOR {json_filename}", io.BytesIO(json_bytes))
+        uploaded.append(json_filename)
+        try:
+            client.quit()
+        except FTP_ERRORS:
+            client.close()
+    except (OSError, ValueError, *FTP_ERRORS) as error:
+        for remote_name in uploaded:
+            try:
+                client.delete(remote_name)
+            except (OSError, *FTP_ERRORS):
+                pass
+        try:
+            client.close()
+        except OSError:
+            pass
+        raise ResultArchiveError("FTP архивът временно не е достъпен.") from error
+    return f"{remote_directory}/{filename}"
+
+
+def _archive_to_github(pdf_path: Path, record: dict, session_id: str) -> str | None:
     repository = os.environ.get("RESULTS_GITHUB_REPOSITORY", "").strip()
     private_key = os.environ.get("RESULTS_GITHUB_SSH_KEY", "").strip()
     if not repository and not private_key:
@@ -107,3 +194,15 @@ def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
         _run_git(["commit", "-m", f"Archive results for {filename}"], cwd=checkout, environment=environment)
         _run_git(["push", "origin", "HEAD:main"], cwd=checkout, environment=environment)
     return str(relative_path)
+
+
+def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
+    """Archive a completed PDF and its data using the configured backend."""
+    backend = os.environ.get("RESULTS_ARCHIVE_BACKEND", "").strip().lower()
+    if backend == "ftp":
+        return _archive_to_ftp(pdf_path, record, session_id)
+    if backend == "github":
+        return _archive_to_github(pdf_path, record, session_id)
+    if backend:
+        raise ResultArchiveError("Избраният архив не се поддържа.")
+    return _archive_to_github(pdf_path, record, session_id)

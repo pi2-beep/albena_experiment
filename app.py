@@ -238,7 +238,7 @@ def create_pdf():
         if archive_pdf(output, record, sid):
             archive_status = "saved"
     except ResultArchiveError:
-        app.logger.exception("The completed PDF could not be archived in GitHub")
+        app.logger.exception("The completed result could not be archived")
         archive_status = "failed"
     response = send_file(output, mimetype="application/pdf", as_attachment=True, download_name=f"rezultati-{code}.pdf")
     response.headers["X-Results-Archive"] = archive_status
