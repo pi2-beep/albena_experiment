@@ -93,6 +93,9 @@ def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
 
     use_tls = _enabled(os.environ.get("RESULTS_FTP_TLS"), default=True)
     passive = _enabled(os.environ.get("RESULTS_FTP_PASSIVE"), default=True)
+    tls_server_name = os.environ.get("RESULTS_FTP_TLS_SERVER_NAME", "").strip()
+    if tls_server_name and not re.fullmatch(r"[A-Za-z0-9.-]+", tls_server_name):
+        raise ResultArchiveError("TLS името на FTP сървъра е невалидно.")
     base_directory = _ftp_directory(os.environ.get("RESULTS_FTP_DIRECTORY", "/albena-results"))
     day, filename = _archive_name(record, session_id)
     remote_directory = f"{base_directory.rstrip('/')}/{day}"
@@ -108,6 +111,10 @@ def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
     uploaded: list[str] = []
     try:
         client.connect(host, port, timeout=30)
+        # Some hosting providers publish the FTP endpoint as an IP/domain alias,
+        # while their verified TLS certificate uses the hosting server name.
+        if isinstance(client, FTP_TLS) and tls_server_name:
+            client.host = tls_server_name
         client.login(username, password)
         if isinstance(client, FTP_TLS):
             client.prot_p()

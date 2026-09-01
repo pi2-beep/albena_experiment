@@ -25,5 +25,7 @@ services:
         value: /albena-results
       - key: RESULTS_FTP_TLS
         value: "true"
+      - key: RESULTS_FTP_TLS_SERVER_NAME
+        sync: false
       - key: RESULTS_FTP_PASSIVE
         value: "true"

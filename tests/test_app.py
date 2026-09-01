@@ -225,6 +225,7 @@ class AppTestCase(unittest.TestCase):
             "RESULTS_FTP_PASSWORD": "secret",
             "RESULTS_FTP_DIRECTORY": "/private/results",
             "RESULTS_FTP_TLS": "true",
+            "RESULTS_FTP_TLS_SERVER_NAME": "ftp.hosting.example",
             "SECRET_KEY": "test-key",
         }
         with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(

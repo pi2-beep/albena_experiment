@@ -31,7 +31,7 @@ Flask приложение за провеждане на изследванет
 
 Важно: файловата система на безплатна Render услуга е временна. FTPS архивът пази завършените PDF и JSON файлове независимо от рестартирането на Render. Участникът пак изтегля лично PDF копие в края. Браузърната чернова остава само на същото устройство и в същия браузър.
 
-FTP архивирането се включва с `RESULTS_ARCHIVE_BACKEND=ftp`. Необходимите настройки са `RESULTS_FTP_HOST`, `RESULTS_FTP_PORT`, `RESULTS_FTP_USERNAME`, `RESULTS_FTP_PASSWORD` и `RESULTS_FTP_DIRECTORY`. По подразбиране се използват TLS и пасивен режим чрез `RESULTS_FTP_TLS=true` и `RESULTS_FTP_PASSIVE=true`.
+FTP архивирането се включва с `RESULTS_ARCHIVE_BACKEND=ftp`. Необходимите настройки са `RESULTS_FTP_HOST`, `RESULTS_FTP_PORT`, `RESULTS_FTP_USERNAME`, `RESULTS_FTP_PASSWORD` и `RESULTS_FTP_DIRECTORY`. По подразбиране се използват TLS и пасивен режим чрез `RESULTS_FTP_TLS=true` и `RESULTS_FTP_PASSIVE=true`. При хостинг с IP/alias за връзката и различно валидно име в TLS сертификата се задава и `RESULTS_FTP_TLS_SERVER_NAME`.
 
 Паролата се задава единствено като защитена променлива в Render и не се записва в Git. Обикновен FTP без TLS може да се разреши с `RESULTS_FTP_TLS=false`, но не се препоръчва, защото данните и паролата се предават некриптирано. Старият GitHub архив остава наличен като резервна реализация при `RESULTS_ARCHIVE_BACKEND=github`.
 
@@ -86,7 +86,7 @@ python -m unittest discover -s tests -v
 - `RESULTS_ARCHIVE_BACKEND=ftp`
 - `RESULTS_FTP_HOST`, `RESULTS_FTP_PORT`, `RESULTS_FTP_USERNAME`, `RESULTS_FTP_PASSWORD`
 - `RESULTS_FTP_DIRECTORY=/albena-results`
-- `RESULTS_FTP_TLS=true` и `RESULTS_FTP_PASSIVE=true`
+- `RESULTS_FTP_TLS=true`, при нужда `RESULTS_FTP_TLS_SERVER_NAME`, и `RESULTS_FTP_PASSIVE=true`
 
 ## Структура
 
