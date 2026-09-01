@@ -49,6 +49,7 @@
           <div class="assurance-icon" aria-hidden="true">✓</div>
           <p><strong>Поверителна изследователска сесия</strong><span>Не въвеждайте име, имейл или друг личен идентификатор. Данните се пазят локално.</span></p>
         </div>
+        <small class="version-mark">Версия v{{ app_version }}</small>
       </div>
     </section>
 
@@ -75,6 +76,7 @@
           <button data-step="7"><span>8</span><b>Преглед и PDF</b></button>
         </nav>
         <div class="save-status" id="save-status" aria-live="polite">Черновата е готова</div>
+        <small class="version-mark sidebar-version">Версия v{{ app_version }}</small>
         <button id="logout-button" class="text-button" type="button">Изход от сесията</button>
       </aside>
 
@@ -86,6 +88,7 @@
         </div>
         <header class="mobile-header">
           <div class="side-brand"><img src="{{ url_for('static', filename='img/ipa-wordmark.png') }}" alt=""><div><strong>Експеримент Албена</strong></div></div>
+          <small class="mobile-version">v{{ app_version }}</small>
           <span id="mobile-progress">1 / 8</span>
         </header>
         <div class="progress-track"><span id="progress-bar"></span></div>
@@ -282,7 +285,7 @@
             <div id="pdf-errors" class="error-panel" role="alert" hidden></div>
             <div class="download-card">
               <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF като лично резервно копие. При успешно изтегляне системата записва копие и в частния архив на изследването.</p></div>
-              <button id="download-pdf" class="button large pdf-submit-button" type="button">Подаване и локален запис на PDF</button>
+              <button id="download-pdf" class="button large pdf-submit-button" type="button">Генерирай и запиши</button>
             </div>
             <div class="debrief"><strong>Информация след експеримента</strong><p>Изследването разглежда как хората използват генеративен ИИ при формиране на професионална преценка. Интерес представляват промените в преценката и увереността, въпросите към ИИ, търсенето на противоположни аргументи и проверката на доказателствата. Не се оценява индивидуалната компетентност.</p></div>
           </section>

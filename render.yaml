@@ -9,6 +9,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.11
+      - key: APP_VERSION
+        value: 1.4.0
       - key: SECRET_KEY
         generateValue: true
       - key: RESULTS_ARCHIVE_BACKEND

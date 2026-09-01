@@ -94,6 +94,13 @@ class AppTestCase(unittest.TestCase):
         self.assertTrue(restored["authenticated"])
         self.assertEqual(restored["data"]["baseline"]["preferred"], "B")
 
+    def test_health_and_page_expose_version(self):
+        health = self.client.get("/health")
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(health.get_json()["version"], study_app.APP_VERSION)
+        page = self.client.get("/")
+        self.assertIn(f"Версия v{study_app.APP_VERSION}".encode("utf-8"), page.data)
+
     def test_three_interactions_are_required(self):
         payload = complete_payload()
         payload["interactions"][2]["response"] = ""
@@ -150,6 +157,9 @@ class AppTestCase(unittest.TestCase):
             response = self.client.post("/api/pdf", json=complete_payload())
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["X-Results-Archive"], "failed")
+        self.assertRegex(response.headers["X-Results-Archive-Error-ID"], r"^[A-F0-9]{12}$")
+        self.assertEqual(response.headers["X-Results-Archive-Error-Stage"], "ftps-upload")
+        self.assertIn("X-Results-Generated-At", response.headers)
         self.assertEqual(response.mimetype, "application/pdf")
         self.assertIn("attachment", response.headers["Content-Disposition"])
         self.assertEqual(response.headers["Cache-Control"], "no-store, private")
@@ -157,6 +167,35 @@ class AppTestCase(unittest.TestCase):
         self.assertTrue(response.data.startswith(b"%PDF"))
         self.assertGreater(len(response.data), 10_000)
         response.close()
+
+    def test_partial_ftp_archive_is_reported_as_information(self):
+        self.login()
+        output = Path(self.temp_dir.name) / "partial.pdf"
+        partial_archive = result_store.ArchiveResult(
+            remote_directory="/albena-results/2026-09-01",
+            pdf_filename="TEST-01.pdf",
+            json_filename="TEST-01.json",
+            pdf_saved=True,
+            json_saved=False,
+        )
+        with mock.patch.object(study_app, "pdf_path_for", return_value=output), mock.patch.object(
+            study_app, "archive_pdf", return_value=partial_archive
+        ):
+            response = self.client.post("/api/pdf", json=complete_payload())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["X-Results-Archive"], "partial")
+        self.assertEqual(response.headers["X-Results-PDF-Archive"], "saved")
+        self.assertEqual(response.headers["X-Results-JSON-Archive"], "failed")
+        self.assertEqual(response.headers["X-Results-Archive-Error-Stage"], "ftps-partial")
+        self.assertTrue(response.data.startswith(b"%PDF"))
+        response.close()
+
+    def test_final_button_uses_generate_and_save_label(self):
+        template = (study_app.ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+        javascript = (study_app.ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("Генерирай и запиши", template)
+        self.assertIn('button.textContent = "Генерирай и запиши"', javascript)
+        self.assertNotIn("Подаване и локален запис на PDF", template)
 
     def test_expired_session_accepts_partial_pdf_and_blocks_edits(self):
         self.login()
@@ -213,6 +252,15 @@ class AppTestCase(unittest.TestCase):
             def storbinary(self, command, stream):
                 uploads[command.removeprefix("STOR ")] = stream.read()
 
+            def nlst(self):
+                return list(uploads)
+
+            def size(self, filename):
+                return len(uploads[filename])
+
+            def rename(self, source, destination):
+                uploads[destination] = uploads.pop(source)
+
             def quit(self):
                 return None
 
@@ -239,11 +287,63 @@ class AppTestCase(unittest.TestCase):
         ):
             remote_path = result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
 
-        self.assertTrue(remote_path.startswith("/private/results/"))
-        self.assertTrue(remote_path.endswith(".pdf"))
+        self.assertEqual(remote_path.remote_directory, "/private/results/2026-09-01")
+        self.assertTrue(remote_path.complete)
+        self.assertTrue(remote_path.pdf_saved)
+        self.assertTrue(remote_path.json_saved)
         self.assertEqual(next(value for key, value in uploads.items() if key.endswith(".pdf")), b"example-pdf")
         json_data = next(value for key, value in uploads.items() if key.endswith(".json")).decode("utf-8")
         self.assertIn('"participant_code": "TEST-01"', json_data)
+
+    def test_one_successful_ftp_file_returns_partial_result(self):
+        class FakeFTPS:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def connect(self, *args, **kwargs):
+                return None
+
+            def login(self, *args, **kwargs):
+                return None
+
+            def prot_p(self):
+                return None
+
+            def set_pasv(self, _passive):
+                return None
+
+            def cwd(self, _directory):
+                return None
+
+            def mkd(self, _directory):
+                return None
+
+            def nlst(self):
+                return []
+
+            def quit(self):
+                return None
+
+            def close(self):
+                return None
+
+        pdf = Path(self.temp_dir.name) / "result.pdf"
+        pdf.write_bytes(b"example-pdf")
+        environment = {
+            "RESULTS_ARCHIVE_BACKEND": "ftp",
+            "RESULTS_FTP_HOST": "ftp.example.test",
+            "RESULTS_FTP_USERNAME": "albena",
+            "RESULTS_FTP_PASSWORD": "secret",
+            "SECRET_KEY": "test-key",
+        }
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(
+            result_store, "FTP_TLS", FakeFTPS
+        ), mock.patch.object(result_store, "_upload_ftp_item", side_effect=[True, False]):
+            archive = result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
+        self.assertIsInstance(archive, result_store.ArchiveResult)
+        self.assertTrue(archive.pdf_saved)
+        self.assertFalse(archive.json_saved)
+        self.assertFalse(archive.complete)
 
     def test_ftp_archive_requires_private_credentials(self):
         pdf = Path(self.temp_dir.name) / "result.pdf"

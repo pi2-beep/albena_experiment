@@ -458,11 +458,12 @@ async function restoreSession() {
 async function downloadPdf() {
   const errors = $("#pdf-errors");
   errors.hidden = true;
+  errors.classList.remove("info-panel");
   collectForm();
   await saveServer();
   const button = $("#download-pdf");
   button.disabled = true;
-  button.textContent = "Създаване…";
+  button.textContent = "Генериране и запис…";
   try {
     const response = await fetch("/api/pdf", {
       method: "POST",
@@ -472,12 +473,23 @@ async function downloadPdf() {
     if (!response.ok) {
       const result = await response.json();
       const details = result.details || [result.error || "PDF файлът не беше създаден."];
-      errors.innerHTML = `<strong>Необходими корекции:</strong><ul>${details.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+      const diagnosticLog = [
+        `Време: ${new Date().toISOString()}`,
+        `HTTP статус: ${response.status}`,
+        "Етап: проверка на формуляра",
+        ...details.map((item, index) => `${index + 1}. ${item}`),
+      ].join("\n");
+      errors.innerHTML = `<strong>Необходими корекции:</strong><pre class="diagnostic-log">${escapeHtml(diagnosticLog)}</pre>`;
       errors.hidden = false;
       errors.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const archiveStatus = response.headers.get("X-Results-Archive") || "disabled";
+    const pdfArchiveStatus = response.headers.get("X-Results-PDF-Archive") || "неизвестно";
+    const jsonArchiveStatus = response.headers.get("X-Results-JSON-Archive") || "неизвестно";
+    const archiveErrorId = response.headers.get("X-Results-Archive-Error-ID") || "няма";
+    const archiveErrorStage = response.headers.get("X-Results-Archive-Error-Stage") || "няма";
+    const generatedAt = response.headers.get("X-Results-Generated-At") || new Date().toISOString();
     const blob = await response.blob();
     const disposition = response.headers.get("Content-Disposition") || "";
     const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
@@ -492,20 +504,51 @@ async function downloadPdf() {
     URL.revokeObjectURL(url);
     if (archiveStatus === "saved") {
       showToast("PDF файлът е изтеглен и записан в защитения архив.");
+    } else if (archiveStatus === "partial") {
+      const diagnosticLog = [
+        `Време: ${generatedAt}`,
+        "PDF генериране: успешно",
+        `Локално изтегляне: успешно (${blob.size} байта)`,
+        `PDF във FTP: ${pdfArchiveStatus === "saved" ? "записан" : "не е записан"}`,
+        `JSON във FTP: ${jsonArchiveStatus === "saved" ? "записан" : "не е записан"}`,
+        `Диагностичен код: ${archiveErrorId}`,
+      ].join("\n");
+      errors.classList.add("info-panel");
+      errors.innerHTML = `<strong>Резултатът е записан частично в защитения FTP архив.</strong><p>Локалният PDF е изтеглен успешно. По-долу е описано точно кое копие е налично в архива.</p><pre class="diagnostic-log">${escapeHtml(diagnosticLog)}</pre>`;
+      errors.hidden = false;
+      errors.scrollIntoView({ behavior: "smooth", block: "center" });
+      showToast("Файловете са генерирани; FTP записът е частичен.");
     } else if (archiveStatus === "failed") {
-      errors.innerHTML = "<strong>PDF файлът е изтеглен локално, но защитеният FTP архив е недостъпен.</strong> Запазете изтегления файл и го предайте на изследователя. Можете да опитате подаването отново по-късно.";
+      const diagnosticLog = [
+        `Време: ${generatedAt}`,
+        "PDF генериране: успешно",
+        `Локално изтегляне: успешно (${blob.size} байта)` ,
+        `PDF във FTP: ${pdfArchiveStatus === "saved" ? "записан" : "не е записан"}`,
+        `JSON във FTP: ${jsonArchiveStatus === "saved" ? "записан" : "не е записан"}`,
+        `FTP архив: недостъпен (${archiveErrorStage})`,
+        `Диагностичен код: ${archiveErrorId}`,
+        `Файл: ${filename}`,
+      ].join("\n");
+      errors.innerHTML = `<strong>PDF файлът е изтеглен локално, но защитеният FTP архив е недостъпен.</strong><p>Запазете изтегления файл и го предайте на изследователя. Можете да опитате подаването отново по-късно.</p><pre class="diagnostic-log">${escapeHtml(diagnosticLog)}</pre>`;
       errors.hidden = false;
       errors.scrollIntoView({ behavior: "smooth", block: "center" });
       showToast("PDF е изтеглен; архивирането не успя.");
     } else {
       showToast("PDF файлът е изтеглен.");
     }
-  } catch {
-    errors.textContent = "Възникна грешка при създаването на PDF. Проверете връзката и опитайте отново.";
+  } catch (downloadError) {
+    const diagnosticLog = [
+      `Време: ${new Date().toISOString()}`,
+      "Етап: връзка, генериране или локално изтегляне",
+      `Браузърът отчита интернет връзка: ${navigator.onLine ? "да" : "не"}`,
+      `Грешка: ${downloadError?.message || "неизвестна грешка"}`,
+    ].join("\n");
+    errors.innerHTML = `<strong>PDF файлът не беше изтеглен.</strong><p>Проверете връзката и опитайте отново. Данните остават в локалната чернова.</p><pre class="diagnostic-log">${escapeHtml(diagnosticLog)}</pre>`;
     errors.hidden = false;
+    errors.scrollIntoView({ behavior: "smooth", block: "center" });
   } finally {
     button.disabled = false;
-    button.textContent = "Подаване и локален запис на PDF";
+    button.textContent = "Генерирай и запиши";
   }
 }
 

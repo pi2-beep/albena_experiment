@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import os
 import re
 import shutil
 import ssl
 import subprocess
 import tempfile
+import uuid
+from dataclasses import dataclass
 from ftplib import FTP, FTP_TLS, all_errors as FTP_ERRORS
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -20,10 +23,27 @@ GITHUB_KNOWN_HOSTS = """github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVz
 github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
 github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
 """
+LOGGER = logging.getLogger(__name__)
 
 
 class ResultArchiveError(RuntimeError):
     """Raised when a configured results archive cannot accept a PDF."""
+
+
+@dataclass(frozen=True)
+class ArchiveResult:
+    remote_directory: str
+    pdf_filename: str
+    json_filename: str
+    pdf_saved: bool
+    json_saved: bool
+
+    @property
+    def complete(self) -> bool:
+        return self.pdf_saved and self.json_saved
+
+    def __bool__(self) -> bool:
+        return self.pdf_saved or self.json_saved
 
 
 def _enabled(value: str | None, *, default: bool) -> bool:
@@ -78,7 +98,37 @@ def _ensure_ftp_directory(client: FTP, directory: str) -> None:
             client.cwd(part)
 
 
-def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
+def _available_ftp_names(client: FTP, filename: str) -> tuple[str, str]:
+    existing = set(client.nlst())
+    stem = Path(filename).stem
+    index = 1
+    while True:
+        suffix = "" if index == 1 else f"-{index}"
+        pdf_name = f"{stem}{suffix}.pdf"
+        json_name = f"{stem}{suffix}.json"
+        if pdf_name not in existing and json_name not in existing:
+            return pdf_name, json_name
+        index += 1
+
+
+def _upload_ftp_item(client: FTP, filename: str, stream: io.BufferedIOBase, expected_size: int) -> bool:
+    temporary_name = f".{filename}.{uuid.uuid4().hex}.part"
+    try:
+        client.storbinary(f"STOR {temporary_name}", stream)
+        if client.size(temporary_name) != expected_size:
+            raise OSError("Uploaded file size does not match the local file")
+        client.rename(temporary_name, filename)
+        return True
+    except (OSError, ValueError, *FTP_ERRORS):
+        LOGGER.exception("FTPS item upload failed [filename=%s]", filename)
+        try:
+            client.delete(temporary_name)
+        except (OSError, *FTP_ERRORS):
+            pass
+        return False
+
+
+def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> ArchiveResult:
     host = os.environ.get("RESULTS_FTP_HOST", "").strip()
     username = os.environ.get("RESULTS_FTP_USERNAME", "").strip()
     password = os.environ.get("RESULTS_FTP_PASSWORD", "")
@@ -99,7 +149,6 @@ def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
     base_directory = _ftp_directory(os.environ.get("RESULTS_FTP_DIRECTORY", "/albena-results"))
     day, filename = _archive_name(record, session_id)
     remote_directory = f"{base_directory.rstrip('/')}/{day}"
-    json_filename = f"{Path(filename).stem}.json"
     json_bytes = json.dumps(record, ensure_ascii=False, indent=2).encode("utf-8")
 
     client: FTP
@@ -108,7 +157,6 @@ def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
     else:
         client = FTP(timeout=30)
 
-    uploaded: list[str] = []
     try:
         client.connect(host, port, timeout=30)
         # Some hosting providers publish the FTP endpoint as an IP/domain alias,
@@ -120,27 +168,29 @@ def _archive_to_ftp(pdf_path: Path, record: dict, session_id: str) -> str:
             client.prot_p()
         client.set_pasv(passive)
         _ensure_ftp_directory(client, remote_directory)
+        pdf_filename, json_filename = _available_ftp_names(client, filename)
         with pdf_path.open("rb") as pdf_file:
-            client.storbinary(f"STOR {filename}", pdf_file)
-        uploaded.append(filename)
-        client.storbinary(f"STOR {json_filename}", io.BytesIO(json_bytes))
-        uploaded.append(json_filename)
+            pdf_saved = _upload_ftp_item(client, pdf_filename, pdf_file, pdf_path.stat().st_size)
+        json_saved = _upload_ftp_item(client, json_filename, io.BytesIO(json_bytes), len(json_bytes))
         try:
             client.quit()
         except FTP_ERRORS:
             client.close()
     except (OSError, ValueError, *FTP_ERRORS) as error:
-        for remote_name in uploaded:
-            try:
-                client.delete(remote_name)
-            except (OSError, *FTP_ERRORS):
-                pass
         try:
             client.close()
         except OSError:
             pass
         raise ResultArchiveError("FTP архивът временно не е достъпен.") from error
-    return f"{remote_directory}/{filename}"
+    if not pdf_saved and not json_saved:
+        raise ResultArchiveError("FTP архивът не прие PDF или JSON файла.")
+    return ArchiveResult(
+        remote_directory=remote_directory,
+        pdf_filename=pdf_filename,
+        json_filename=json_filename,
+        pdf_saved=pdf_saved,
+        json_saved=json_saved,
+    )
 
 
 def _archive_to_github(pdf_path: Path, record: dict, session_id: str) -> str | None:

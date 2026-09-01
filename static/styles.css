@@ -178,6 +178,12 @@ h4 { margin-bottom: .35rem; }
 .binary-field span { min-width: 100px; }
 .error-panel { background: #fff0ef; color: var(--danger); padding: 1rem 1.2rem; border-radius: 12px; margin: 1rem 0; }
 .error-panel ul { margin: .4rem 0 0; }
+.error-panel.info-panel { color: #174b63; background: #eaf7fb; border: 1px solid #b9e2ef; }
+.error-panel.info-panel .diagnostic-log { color: #174b63; border-color: rgba(23,75,99,.18); }
+.diagnostic-log { margin: .8rem 0 0; padding: .8rem; overflow-wrap: anywhere; white-space: pre-wrap; background: rgba(255,255,255,.7); border: 1px solid rgba(130,25,25,.18); border-radius: 8px; color: #542020; font: 600 .82rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.version-mark { display: block; margin-top: .8rem; color: #8492a3; font-size: .72rem; letter-spacing: .06em; }
+.sidebar-version { margin: auto 0 .35rem; color: rgba(255,255,255,.56); text-align: center; }
+.mobile-version { margin-left: auto; color: rgba(255,255,255,.68); font-size: .7rem; letter-spacing: .05em; }
 .download-card { margin-top: 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 1.5rem; color: white; background: var(--navy); border-radius: 18px; }
 .download-card p { margin: .25rem 0 0; color: #c4d3e1; font-size: .9rem; }
 .download-card .button { background: white; color: var(--navy); }

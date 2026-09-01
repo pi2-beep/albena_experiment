@@ -11,10 +11,11 @@ from typing import Any
 from flask import Flask, jsonify, render_template, request, send_file, session
 
 from pdf_export import build_pdf, pdf_path_for
-from result_store import ResultArchiveError, archive_pdf
+from result_store import ArchiveResult, ResultArchiveError, archive_pdf
 
 
 ROOT = Path(__file__).resolve().parent
+APP_VERSION = os.environ.get("APP_VERSION", "1.4.0")
 SESSION_DIR = ROOT / "data" / "sessions"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
 try:
@@ -142,12 +143,12 @@ def validate_complete(data: dict[str, Any]) -> list[str]:
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", app_version=APP_VERSION)
 
 
 @app.get("/health")
 def health():
-    return jsonify(status="ok")
+    return jsonify(status="ok", version=APP_VERSION)
 
 
 @app.post("/api/login")
@@ -234,14 +235,51 @@ def create_pdf():
     build_pdf(record, output)
     code = re.sub(r"[^A-Za-zА-Яа-я0-9_-]", "-", str(record.get("participant_code", "participant")))
     archive_status = "disabled"
+    pdf_archive_status = "disabled"
+    json_archive_status = "disabled"
+    archive_error_id = ""
     try:
-        if archive_pdf(output, record, sid):
+        archive_result = archive_pdf(output, record, sid)
+        if isinstance(archive_result, ArchiveResult):
+            pdf_archive_status = "saved" if archive_result.pdf_saved else "failed"
+            json_archive_status = "saved" if archive_result.json_saved else "failed"
+            if archive_result.complete:
+                archive_status = "saved"
+            else:
+                archive_status = "partial"
+                archive_error_id = secrets.token_hex(6).upper()
+                app.logger.warning(
+                    "The completed result was partially archived [diagnostic_id=%s participant_code=%s pdf_saved=%s json_saved=%s]",
+                    archive_error_id,
+                    code,
+                    archive_result.pdf_saved,
+                    archive_result.json_saved,
+                )
+        elif archive_result:
             archive_status = "saved"
+            pdf_archive_status = "saved"
+            json_archive_status = "not-applicable"
     except ResultArchiveError:
-        app.logger.exception("The completed result could not be archived")
+        archive_error_id = secrets.token_hex(6).upper()
+        app.logger.exception(
+            "The completed result could not be archived [diagnostic_id=%s participant_code=%s pdf_bytes=%s]",
+            archive_error_id,
+            code,
+            output.stat().st_size,
+        )
         archive_status = "failed"
+        pdf_archive_status = "failed"
+        json_archive_status = "failed"
     response = send_file(output, mimetype="application/pdf", as_attachment=True, download_name=f"rezultati-{code}.pdf")
     response.headers["X-Results-Archive"] = archive_status
+    response.headers["X-Results-PDF-Archive"] = pdf_archive_status
+    response.headers["X-Results-JSON-Archive"] = json_archive_status
+    response.headers["X-Results-Generated-At"] = record["completed_at"]
+    if archive_error_id:
+        response.headers["X-Results-Archive-Error-ID"] = archive_error_id
+        response.headers["X-Results-Archive-Error-Stage"] = (
+            "ftps-partial" if archive_status == "partial" else "ftps-upload"
+        )
     response.headers["Cache-Control"] = "no-store, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
