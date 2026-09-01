@@ -100,6 +100,8 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(health.get_json()["version"], study_app.APP_VERSION)
         page = self.client.get("/")
         self.assertIn(f"Версия v{study_app.APP_VERSION}".encode("utf-8"), page.data)
+        self.assertIn(f"app.js?v={study_app.APP_VERSION}".encode("utf-8"), page.data)
+        self.assertIn(f"styles.css?v={study_app.APP_VERSION}".encode("utf-8"), page.data)
 
     def test_three_interactions_are_required(self):
         payload = complete_payload()
