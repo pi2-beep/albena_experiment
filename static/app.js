@@ -507,12 +507,25 @@ async function downloadPdf() {
       body: JSON.stringify(appState.data),
     });
     if (!response.ok) {
-      const result = await response.json();
+      const contentType = response.headers.get("Content-Type") || "";
+      let result;
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        await response.text();
+        result = {
+          error: response.status >= 500
+            ? "Сървърът временно не успя да създаде PDF файла. Данните остават в локалната чернова."
+            : "Сървърът върна неочакван отговор.",
+          details: ["Опитайте отново след кратко изчакване."],
+        };
+      }
       const details = result.details || [result.error || "PDF файлът не беше създаден."];
       const diagnosticLog = [
         `Време: ${new Date().toISOString()}`,
         `HTTP статус: ${response.status}`,
-        "Етап: проверка на формуляра",
+        `Етап: ${result.stage || (response.status >= 500 ? "генериране на PDF" : "проверка на формуляра")}`,
+        ...(result.error ? [`Причина: ${result.error}`] : []),
         ...details.map((item, index) => `${index + 1}. ${item}`),
       ].join("\n");
       errors.innerHTML = `<strong>Необходими корекции:</strong><pre class="diagnostic-log">${escapeHtml(diagnosticLog)}</pre>`;

@@ -14,7 +14,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
-    KeepTogether,
     PageTemplate,
     Paragraph,
     PageBreak,
@@ -124,6 +123,19 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
         spaceBefore=5,
         spaceAfter=4,
     )
+    field_label = ParagraphStyle(
+        "FieldLabelBG",
+        parent=small,
+        fontName="DejaVu-Bold",
+        textColor=palette["navy"],
+        backColor=colors.HexColor("#F5F7FA"),
+        borderColor=palette["line"],
+        borderWidth=0.5,
+        borderPadding=(5, 7, 5, 7),
+        spaceBefore=4,
+        spaceAfter=5,
+    )
+    long_body = ParagraphStyle("LongBodyBG", parent=body, splitLongWords=1, spaceAfter=7)
 
     def p(value: Any, style: ParagraphStyle = body) -> Paragraph:
         return Paragraph(escape(_text(value)).replace("\n", "<br/>"), style)
@@ -146,6 +158,9 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
             )
         )
         return table
+
+    def long_field(label: str, value: Any) -> list[Any]:
+        return [Paragraph(escape(label), field_label), p(value, long_body), Spacer(1, 2 * mm)]
 
     def page_footer(canvas, doc):
         canvas.saveState()
@@ -208,9 +223,9 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
                 ("Точки за C", baseline.get("points_c")),
                 ("Общо точки", sum(int(baseline.get(k) or 0) for k in ("points_a", "points_b", "points_c"))),
                 ("Увереност", f"{_text(baseline.get('confidence'))} / 100"),
-                ("Най-важно съображение", baseline.get("rationale")),
             ]
         ),
+        *long_field("Най-важно съображение", baseline.get("rationale")),
         Paragraph("Фаза 2 — Работа с ИИ", heading),
     ]
 
@@ -220,14 +235,9 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
         if not prompt and not response:
             continue
         requirement = "задължително" if index <= 3 else "незадължително"
-        story.append(
-            KeepTogether(
-                [
-                    Paragraph(f"Взаимодействие {index} ({requirement})", subheading),
-                    rows([("Prompt към ИИ", prompt), ("Отговор на ИИ", response)]),
-                ]
-            )
-        )
+        story.append(Paragraph(f"Взаимодействие {index} ({requirement})", subheading))
+        story.extend(long_field("Prompt към ИИ", prompt))
+        story.extend(long_field("Отговор на ИИ", response))
 
     story.extend(
         [
@@ -243,10 +253,10 @@ def build_pdf(data: dict[str, Any], output_path: Path) -> None:
                     ("Точки за C", after.get("points_c")),
                     ("Общо точки", sum(int(after.get(k) or 0) for k in ("points_a", "points_b", "points_c"))),
                     ("Увереност", f"{_text(after.get('confidence'))} / 100"),
-                    ("Най-важно съображение", after.get("rationale")),
                     ("Възприемано влияние на ИИ", f"{_text(after.get('influence'))} / 100"),
                 ]
             ),
+            *long_field("Най-важно съображение", after.get("rationale")),
             Paragraph("Оценка на анализа с ИИ (1–7)", subheading),
             rows(
                 [

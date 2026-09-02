@@ -15,7 +15,7 @@ from result_store import ArchiveResult, ResultArchiveError, archive_pdf
 
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = os.environ.get("APP_VERSION", "1.4.1")
+APP_VERSION = os.environ.get("APP_VERSION", "1.4.2")
 SESSION_DIR = ROOT / "data" / "sessions"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
 try:
@@ -232,7 +232,24 @@ def create_pdf():
     record["completed_at"] = now_iso()
     save_record(sid, record)
     output = pdf_path_for(sid)
-    build_pdf(record, output)
+    try:
+        build_pdf(record, output)
+    except Exception:
+        diagnostic_id = secrets.token_hex(6).upper()
+        app.logger.exception(
+            "PDF generation failed [diagnostic_id=%s participant_code=%s]",
+            diagnostic_id,
+            record.get("participant_code", "participant"),
+        )
+        return jsonify(
+            error="PDF файлът не можа да бъде генериран. Данните остават в локалната чернова.",
+            details=[
+                "Опитайте отново след кратко изчакване.",
+                f"Диагностичен код: {diagnostic_id}",
+            ],
+            diagnostic_id=diagnostic_id,
+            stage="pdf-generation",
+        ), 500
     code = re.sub(r"[^A-Za-zА-Яа-я0-9_-]", "-", str(record.get("participant_code", "participant")))
     archive_status = "disabled"
     pdf_archive_status = "disabled"

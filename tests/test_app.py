@@ -131,11 +131,36 @@ class AppTestCase(unittest.TestCase):
         self.assertIn("Работа с ИИ", text)
         self.assertIn("Отговор 3", text)
 
+    def test_pdf_splits_very_long_ai_response_across_pages(self):
+        payload = complete_payload()
+        payload["interactions"][0]["response"] = (
+            "Подробен анализ на доказателствата и възможните последици. " * 450
+        ) + "КРАЙ НА ДЪЛГИЯ ОТГОВОР"
+        payload["baseline"]["rationale"] = "Дълга самостоятелна обосновка. " * 120
+        payload["after_ai"]["rationale"] = "Дълга окончателна обосновка. " * 120
+        output = Path(self.temp_dir.name) / "long-result.pdf"
+        study_app.build_pdf(payload, output)
+        reader = PdfReader(io.BytesIO(output.read_bytes()))
+        text = "\n".join((page.extract_text() or "") for page in reader.pages)
+        self.assertGreater(len(reader.pages), 3)
+        self.assertIn("КРАЙ НА ДЪЛГИЯ ОТГОВОР", " ".join(text.split()))
+
     def test_pdf_endpoint_rejects_incomplete_form(self):
         self.login()
         response = self.client.post("/api/pdf")
         self.assertEqual(response.status_code, 400)
         self.assertIn("details", response.get_json())
+
+    def test_pdf_generation_failure_returns_json_diagnostic(self):
+        self.login()
+        with mock.patch.object(study_app, "build_pdf", side_effect=RuntimeError("layout failed")):
+            response = self.client.post("/api/pdf", json=complete_payload())
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.mimetype, "application/json")
+        result = response.get_json()
+        self.assertEqual(result["stage"], "pdf-generation")
+        self.assertRegex(result["diagnostic_id"], r"^[A-F0-9]{12}$")
+        self.assertIn("локалната чернова", result["error"])
 
     def test_completed_pdf_is_downloaded_and_archived(self):
         self.login()
@@ -304,10 +329,12 @@ class AppTestCase(unittest.TestCase):
             "RESULTS_FTP_TLS_SERVER_NAME": "ftp.hosting.example",
             "SECRET_KEY": "test-key",
         }
+        payload = complete_payload()
+        payload["completed_at"] = "2026-09-01T12:00:00+03:00"
         with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(
             result_store, "FTP_TLS", FakeFTPS
         ):
-            remote_path = result_store.archive_pdf(pdf, complete_payload(), "a" * 32)
+            remote_path = result_store.archive_pdf(pdf, payload, "a" * 32)
 
         self.assertEqual(remote_path.remote_directory, "/private/results/2026-09-01")
         self.assertTrue(remote_path.complete)
