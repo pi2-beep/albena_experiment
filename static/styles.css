@@ -180,6 +180,9 @@ h4 { margin-bottom: .35rem; }
 .error-panel ul { margin: .4rem 0 0; }
 .error-panel.info-panel { color: #174b63; background: #eaf7fb; border: 1px solid #b9e2ef; }
 .error-panel.info-panel .diagnostic-log { color: #174b63; border-color: rgba(23,75,99,.18); }
+.error-panel.success-panel { color: #155b40; background: #e9f8f0; border: 1px solid #9dd8bb; }
+.error-panel.success-panel strong { display: block; margin-bottom: .35rem; font-size: 1.05rem; }
+.error-panel.success-panel p { margin: 0; }
 .diagnostic-log { margin: .8rem 0 0; padding: .8rem; overflow-wrap: anywhere; white-space: pre-wrap; background: rgba(255,255,255,.7); border: 1px solid rgba(130,25,25,.18); border-radius: 8px; color: #542020; font: 600 .82rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .version-mark { display: block; margin-top: .8rem; color: #8492a3; font-size: .72rem; letter-spacing: .06em; }
 .sidebar-version { margin: auto 0 .35rem; color: rgba(255,255,255,.56); text-align: center; }

@@ -15,7 +15,7 @@ from result_store import ArchiveResult, ResultArchiveError, archive_pdf
 
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = os.environ.get("APP_VERSION", "1.4.2")
+APP_VERSION = os.environ.get("APP_VERSION", "1.4.3")
 SESSION_DIR = ROOT / "data" / "sessions"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
 try:

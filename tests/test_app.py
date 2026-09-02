@@ -134,7 +134,7 @@ class AppTestCase(unittest.TestCase):
     def test_pdf_splits_very_long_ai_response_across_pages(self):
         payload = complete_payload()
         payload["interactions"][0]["response"] = (
-            "Подробен анализ на доказателствата и възможните последици. " * 450
+            "Подробен анализ на доказателствата и възможните последици. " * 2500
         ) + "КРАЙ НА ДЪЛГИЯ ОТГОВОР"
         payload["baseline"]["rationale"] = "Дълга самостоятелна обосновка. " * 120
         payload["after_ai"]["rationale"] = "Дълга окончателна обосновка. " * 120
@@ -142,7 +142,7 @@ class AppTestCase(unittest.TestCase):
         study_app.build_pdf(payload, output)
         reader = PdfReader(io.BytesIO(output.read_bytes()))
         text = "\n".join((page.extract_text() or "") for page in reader.pages)
-        self.assertGreater(len(reader.pages), 3)
+        self.assertGreater(len(reader.pages), 20)
         self.assertIn("КРАЙ НА ДЪЛГИЯ ОТГОВОР", " ".join(text.split()))
 
     def test_pdf_endpoint_rejects_incomplete_form(self):
@@ -243,6 +243,15 @@ class AppTestCase(unittest.TestCase):
         self.assertIn('window.location.assign("/api/pdf/download")', javascript)
         self.assertIn("filenameFromDisposition", javascript)
         self.assertNotIn("Подаване и локален запис на PDF", template)
+
+    def test_long_reports_and_submission_guidance_are_visible(self):
+        template = (study_app.ROOT / "templates" / "index.html").read_text(encoding="utf-8")
+        javascript = (study_app.ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('name="full_transcript" rows="10" maxlength="500000"', template)
+        self.assertIn('maxlength="200000"', javascript)
+        self.assertIn("автоматично ги разделя на необходимия брой страници", template)
+        self.assertIn("не е необходимо да изпращате файла по имейл", template)
+        self.assertIn("Докладът е подаден успешно.", javascript)
 
     def test_expired_session_accepts_partial_pdf_and_blocks_edits(self):
         self.login()

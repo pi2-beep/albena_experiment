@@ -198,7 +198,7 @@
                 <div class="total-line">Общо: <strong data-total>0</strong> / 100</div>
               </fieldset>
               <label class="range-field"><span>3. Колко сте уверени в решението си?</span><output data-for="baseline.confidence">50</output><input type="range" name="baseline.confidence" min="0" max="100" value="50" required><small>0 — изобщо не съм уверен · 100 — напълно съм уверен</small></label>
-              <label>4. Кое съображение беше най-важно за решението Ви?<textarea name="baseline.rationale" rows="5" required maxlength="4000"></textarea></label>
+              <label>4. Кое съображение беше най-важно за решението Ви?<textarea name="baseline.rationale" rows="5" required maxlength="20000"></textarea></label>
             </div>
           </section>
 
@@ -206,9 +206,9 @@
             <p class="eyebrow">Фаза 2</p>
             <h2>Работа с ИИ</h2>
             <p class="section-lead">Използвайте предоставения ИИ асистент така, както бихте го използвали за професионална препоръка. Копирайте точния prompt и получения отговор без редакция.</p>
-            <div class="callout"><strong>Необходими са от 3 до 5 взаимодействия.</strong><p>Взаимодействия 1–3 са задължителни. Взаимодействия 4–5 са по избор, но ако започнете някое от тях, попълнете и двете полета.</p></div>
+            <div class="callout"><strong>Необходими са от 3 до 5 взаимодействия.</strong><p>Взаимодействия 1–3 са задължителни. Взаимодействия 4–5 са по избор, но ако започнете някое от тях, попълнете и двете полета. Можете да поставяте дълги отговори — PDF документът автоматично ги разделя на необходимия брой страници.</p></div>
             <div id="interactions-container"></div>
-            <label class="form-card transcript">Пълен transcript на разговора <span class="optional">незадължително резервно копие</span><textarea name="full_transcript" rows="10" maxlength="80000" placeholder="Поставете целия разговор тук, ако използваният ИИ го позволява."></textarea></label>
+            <label class="form-card transcript">Пълен transcript на разговора <span class="optional">незадължително резервно копие</span><textarea name="full_transcript" rows="10" maxlength="500000" placeholder="Поставете целия разговор тук, ако използваният ИИ го позволява."></textarea></label>
           </section>
 
           <section class="step" data-step="5" hidden>
@@ -233,7 +233,7 @@
                 <div class="total-line">Общо: <strong data-total>0</strong> / 100</div>
               </fieldset>
               <label class="range-field"><span>3. Колко сте уверени сега?</span><output data-for="after_ai.confidence">50</output><input type="range" name="after_ai.confidence" min="0" max="100" value="50" required><small>0 — изобщо не съм уверен · 100 — напълно съм уверен</small></label>
-              <label>4. Кое съображение беше най-важно за окончателното Ви решение?<textarea name="after_ai.rationale" rows="5" required maxlength="4000"></textarea></label>
+              <label>4. Кое съображение беше най-важно за окончателното Ви решение?<textarea name="after_ai.rationale" rows="5" required maxlength="20000"></textarea></label>
             </div>
 
             <div class="form-card">
@@ -280,11 +280,11 @@
           <section class="step" data-step="7" hidden>
             <p class="eyebrow">Проверка преди завършване</p>
             <h2>Преглед и PDF</h2>
-            <p class="section-lead">Проверете обобщението. PDF файлът ще съдържа всички отговори и пълния текст на взаимодействията с ИИ.</p>
+            <p class="section-lead">Проверете обобщението. PDF файлът ще съдържа всички отговори и пълния текст на взаимодействията с ИИ, включително когато докладът се разполага на много страници.</p>
             <div id="review-content"></div>
             <div id="pdf-errors" class="error-panel" role="alert" hidden></div>
             <div class="download-card">
-              <div><strong>Вашият запис е готов за експортиране</strong><p>Изтеглете PDF като лично резервно копие. При успешно изтегляне системата записва копие и в частния архив на изследването.</p></div>
+              <div><strong>Вашият запис е готов за подаване</strong><p>Натиснете бутона само веднъж. Системата изпраща PDF и JSON автоматично в частния архив и изтегля PDF резервно копие на устройството Ви. При потвърждение за успешен запис не е необходимо да изпращате файла по имейл.</p></div>
               <button id="download-pdf" class="button large pdf-submit-button" type="button">Генерирай и запиши</button>
             </div>
             <div class="debrief"><strong>Информация след експеримента</strong><p>Изследването разглежда как хората използват генеративен ИИ при формиране на професионална преценка. Интерес представляват промените в преценката и увереността, въпросите към ИИ, търсенето на противоположни аргументи и проверката на доказателствата. Не се оценява индивидуалната компетентност.</p></div>

@@ -23,10 +23,10 @@ for (let index = 0; index < 5; index += 1) {
         <span class="badge ${required ? "" : "optional-badge"}">${required ? "задължително" : "по избор"}</span>
       </div>
       <label>Prompt към ИИ
-        <textarea name="interactions.${index}.prompt" rows="4" maxlength="20000" ${required ? "required" : ""}></textarea>
+        <textarea name="interactions.${index}.prompt" rows="4" maxlength="50000" ${required ? "required" : ""}></textarea>
       </label>
       <label>Отговор на ИИ
-        <textarea name="interactions.${index}.response" rows="7" maxlength="40000" ${required ? "required" : ""}></textarea>
+        <textarea name="interactions.${index}.response" rows="7" maxlength="200000" ${required ? "required" : ""}></textarea>
       </label>
     </article>`);
 }
@@ -491,7 +491,7 @@ function downloadBlob(blob, filename) {
 async function downloadPdf() {
   const errors = $("#pdf-errors");
   errors.hidden = true;
-  errors.classList.remove("info-panel");
+  errors.classList.remove("info-panel", "success-panel");
   collectForm();
   await saveServer();
   const button = $("#download-pdf");
@@ -551,6 +551,10 @@ async function downloadPdf() {
       downloadBlob(blob, filename);
     }
     if (archiveStatus === "saved") {
+      errors.classList.add("success-panel");
+      errors.innerHTML = `<strong>Докладът е подаден успешно.</strong><p>PDF и JSON са записани в защитения архив на изследването. PDF копие се изтегля и на устройството Ви. Не е необходимо да изпращате файла по имейл; запазете локалното копие като резервно.</p>`;
+      errors.hidden = false;
+      errors.scrollIntoView({ behavior: "smooth", block: "center" });
       showToast("PDF файлът е изтеглен и записан в защитения архив.");
     } else if (archiveStatus === "partial") {
       const diagnosticLog = [
