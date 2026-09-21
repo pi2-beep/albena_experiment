@@ -1,0 +1,14 @@
+{
+  "study_version": "wave2-draft-1",
+  "planned_sample_size": 204,
+  "maximum_sample_size": 240,
+  "arms": ["ai", "control"],
+  "allocation_ratio": "1:1",
+  "stratification": ["session_code", "baseline_preferred"],
+  "permuted_block_sizes": [4, 6],
+  "intervention_seconds": 720,
+  "case_instrument": "case_ev_v1.json",
+  "task_instrument": "mandatory_tasks_v1.json",
+  "system_prompt_instrument": "ai_system_prompt_v1.txt",
+  "status": "draft_pending_preregistration"
+}
