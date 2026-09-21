@@ -87,6 +87,9 @@ class Wave2WebTestCase(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("Policy Reasoning Lab".encode(), page.data)
         self.assertIn("Локален Wave 2 прототип".encode(), page.data)
+        css = self.client.get("/wave2/static/wave2.css")
+        self.assertIn(b"[hidden] { display: none !important; }", css.data)
+        css.close()
 
     def test_mutating_endpoints_require_csrf(self):
         response = self.client.post("/api/consent", json={})
