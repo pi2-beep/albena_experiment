@@ -85,7 +85,7 @@ class Wave2WebTestCase(unittest.TestCase):
     def test_page_is_a_separate_wave2_prototype(self):
         page = self.client.get("/")
         self.assertEqual(page.status_code, 200)
-        self.assertIn("Албена - Wave 2".encode(), page.data)
+        self.assertIn("Policy Reasoning Lab".encode(), page.data)
         self.assertIn("Локален Wave 2 прототип".encode(), page.data)
 
     def test_mutating_endpoints_require_csrf(self):

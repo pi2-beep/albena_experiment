@@ -1,4 +1,4 @@
-# Experiment Albena - Wave 2 prototype
+# Policy Reasoning Lab - Wave 2 prototype
 
 Status: local prototype on `wave2-preregistered`. It is not deployed and does not alter the Wave 1 Render service.
 
