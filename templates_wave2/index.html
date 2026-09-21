@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Албена Wave 2 - прототип</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='wave2.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <img src="{{ url_for('shared_asset', filename='ipa-wordmark.png') }}" alt="Институт по публична администрация">
+    <div><span>PREREGISTERED EXPERIMENT</span><strong>Албена - Wave 2</strong></div>
+    <div class="topbar-status"><span id="study-id-short">Нова сесия</span><b id="timer" hidden>12:00</b></div>
+  </header>
+
+  <main class="shell">
+    <aside class="progress-panel">
+      <p class="eyebrow">Изследователски поток</p>
+      <ol id="step-list">
+        <li data-step="0">Начало</li>
+        <li data-step="1">Информация и съгласие</li>
+        <li data-step="2">Допустимост</li>
+        <li data-step="3">Казус</li>
+        <li data-step="4">Първоначална преценка</li>
+        <li data-step="5">Преосмисляне</li>
+        <li data-step="6">Непосредствена оценка</li>
+        <li data-step="7">Проверка</li>
+        <li data-step="8">Окончателна оценка</li>
+        <li data-step="9">Завършване</li>
+      </ol>
+      <p class="prototype-note">Локален Wave 2 прототип. Не е свързан с production Wave 1.</p>
+      <button id="withdraw-button" class="button danger" type="button" hidden>Прекрати участието</button>
+    </aside>
+
+    <section class="workspace">
+      <div id="message" class="message" role="alert" hidden></div>
+
+      <section class="step" data-step="0">
+        <p class="eyebrow">Лабораторен експеримент за ИИ в публичните политики</p>
+        <h1>Професионална преценка и преосмисляне</h1>
+        <p class="lead">Изследването разглежда как специалисти по публични политики преосмислят вече формирана позиция. Конкретните хипотези не се разкриват преди края на участието.</p>
+        <div class="notice"><strong>Участието е отделено от обучението.</strong><p>Решението за участие или отказ няма отношение към оценка, присъствие или професионален статус.</p></div>
+        <label class="field">Код на сесия/курс <span>незадължително в прототипа</span><input id="session-code" maxlength="64" placeholder="напр. IPA-2026-01"></label>
+        <button id="start-button" class="button primary" type="button">Започни</button>
+      </section>
+
+      <section class="step" data-step="1" hidden>
+        <p class="eyebrow">Информация за участника</p>
+        <h2>Доброволно и псевдонимизирано участие</h2>
+        <div class="prose">
+          <p>Ще прочетете фиктивен казус, ще дадете първоначална оценка, ще преминете през 12-минутно структурирано преосмисляне и ще отговорите отново.</p>
+          <p>Отговорите се използват за научни цели. Не въвеждайте имена, имейли, служебни тайни или друга чувствителна информация.</p>
+          <p>Можете да прекратите участието си. Данните са псевдонимизирани чрез автоматично генериран study ID.</p>
+        </div>
+        <form id="consent-form" class="checklist">
+          <label><input type="checkbox" name="read_information" required> Прочетох информацията за изследването.</label>
+          <label><input type="checkbox" name="voluntary" required> Участието ми е доброволно.</label>
+          <label><input type="checkbox" name="research_use" required> Съгласен/на съм отговорите ми да се използват за научен анализ.</label>
+          <label><input type="checkbox" name="withdrawal_understood" required> Разбирам правото си да прекратя участието.</label>
+          <label><input type="checkbox" name="pseudonymisation" required> Разбирам, че участието е псевдонимизирано, а не напълно анонимно.</label>
+          <button class="button primary" type="submit">Приемам и продължавам</button>
+        </form>
+      </section>
+
+      <section class="step" data-step="2" hidden>
+        <p class="eyebrow">Допустимост</p>
+        <h2>Потвърдете трите условия</h2>
+        <form id="eligibility-form" class="choice-stack">
+          <fieldset><legend>Навършили ли сте 18 години?</legend><label><input type="radio" name="age_18_plus" value="yes" required> Да</label><label><input type="radio" name="age_18_plus" value="no"> Не</label></fieldset>
+          <fieldset><legend>Работата или професионалният Ви опит имат ли отношение към публична администрация, публични политики или професионален анализ?</legend><label><input type="radio" name="professional_relevance" value="yes" required> Да</label><label><input type="radio" name="professional_relevance" value="no"> Не</label></fieldset>
+          <fieldset><legend>Потвърждавате ли, че не сте участвали в предишния пилот със същия казус?</legend><label><input type="radio" name="no_previous_same_case_pilot" value="yes" required> Да</label><label><input type="radio" name="no_previous_same_case_pilot" value="no"> Не</label></fieldset>
+          <button class="button primary" type="submit">Провери и продължи</button>
+        </form>
+      </section>
+
+      <section class="step" data-step="3" hidden>
+        <p class="eyebrow">Казус 1 - замразена версия</p>
+        <h2>{{ case.title }}</h2>
+        <div id="case-content" class="case-content"></div>
+        <div class="notice"><strong>Използвайте само предоставената информация.</strong><p>На този етап не използвайте генеративен ИИ или други външни източници.</p></div>
+        <button id="case-continue" class="button primary" type="button">Прочетох казуса</button>
+      </section>
+
+      <section class="step" data-step="4" hidden>
+        <p class="eyebrow">Baseline judgement</p>
+        <h2>Вашата първоначална преценка</h2>
+        <p class="lead">Попълнете без помощ от ИИ. След подаване тези отговори се заключват сървърно.</p>
+        <form id="baseline-form" class="judgement-form">
+          <fieldset><legend>Кой вариант бихте препоръчали?</legend><div class="option-row"><label><input type="radio" name="preferred" value="A" required>A</label><label><input type="radio" name="preferred" value="B">B</label><label><input type="radio" name="preferred" value="C">C</label></div></fieldset>
+          <fieldset><legend>Разпределете точно 100 точки</legend><div class="allocation-row"><label>A<input type="number" name="points_a" min="0" max="100" required></label><label>B<input type="number" name="points_b" min="0" max="100" required></label><label>C<input type="number" name="points_c" min="0" max="100" required></label></div><output id="baseline-total">Общо: 0 / 100</output></fieldset>
+          <label class="field">Увереност 0-100<input type="number" name="confidence" min="0" max="100" required></label>
+          <label class="field">Кратка обосновка<textarea name="rationale" rows="6" maxlength="20000" required></textarea></label>
+          <div id="baseline-mismatch" class="warning" hidden><label><input type="checkbox" name="mismatch_confirmed"> Потвърждавам избора си, въпреки че не съответства на варианта с най-много точки.</label></div>
+          <button class="button primary" type="submit">Заключи първоначалната преценка</button>
+        </form>
+      </section>
+
+      <section class="step" data-step="5" hidden>
+        <p class="eyebrow">12-минутна интервенция</p>
+        <h2 id="intervention-title">Структурирано преосмисляне</h2>
+        <p id="intervention-intro" class="lead"></p>
+        <div id="ai-tool-fields" class="card" hidden>
+          <div class="two-columns"><label class="field">Използван ИИ инструмент<input id="ai-tool-name" maxlength="100" placeholder="ChatGPT, Gemini, Claude, Copilot..."></label><label class="field">Достъп<select id="ai-tool-plan"><option value="">Изберете</option><option value="free">Безплатна версия</option><option value="paid">Платена версия</option><option value="unknown">Не знам</option></select></label></div>
+          <label class="field">Използвахте ли browsing/search?<select id="ai-browsing"><option value="unknown">Не знам</option><option value="no">Не</option><option value="yes">Да</option></select></label>
+          <button id="copy-context" class="button secondary" type="button">Копирай контекста за ИИ</button>
+        </div>
+        <div id="intervention-tasks"></div>
+        <div class="timer-gate"><p id="timer-message">След изтичането на времето ще се отвори непосредствената оценка.</p><button id="post-open" class="button primary" type="button" disabled>Продължи към оценката</button></div>
+      </section>
+
+      <section class="step" data-step="6" hidden>
+        <p class="eyebrow">Primary post-intervention measurement</p>
+        <h2>Вашата преценка непосредствено след преосмислянето</h2>
+        <form id="post-form" class="judgement-form"></form>
+      </section>
+
+      <section class="step" data-step="7" hidden>
+        <p class="eyebrow">Проверка на доказателствата</p>
+        <h2>Желаете ли да прегледате първоначалната информация?</h2>
+        <p class="lead">Няма да получите нова информация. При избор „Да“ ще видите отново същия замразен казус.</p>
+        <form id="review-form" class="choice-stack">
+          <div class="card">
+            <h3>Оценка на преживяването</h3>
+            <label class="field">До каква степен процесът на преосмисляне повлия на преценката Ви? (0-100)<input type="number" name="perceived_influence" min="0" max="100" required></label>
+            <label class="field">Доколко полезен беше процесът? (1-7)<input type="number" name="process_helpfulness" min="1" max="7" required></label>
+            <label class="field">Използвахте ли генеративен ИИ по време на 12-минутната фаза?<select name="used_ai_during_intervention" required><option value="">Изберете</option><option value="yes">Да</option><option value="no">Не</option></select></label>
+          </div>
+          <fieldset><legend>Искате ли преглед?</legend><label><input type="radio" name="requested_review" value="yes" required> Да</label><label><input type="radio" name="requested_review" value="no"> Не</label></fieldset>
+          <div id="review-case" class="case-content compact" hidden></div>
+          <button class="button primary" type="submit">Продължи към окончателното решение</button>
+        </form>
+      </section>
+
+      <section class="step" data-step="8" hidden>
+        <p class="eyebrow">Final judgement</p>
+        <h2>Окончателна преценка</h2>
+        <form id="final-form" class="judgement-form"></form>
+      </section>
+
+      <section class="step" data-step="9" hidden>
+        <p class="eyebrow">Завършено участие</p>
+        <h2>Благодарим Ви</h2>
+        <div class="success-card"><strong>Записът е завършен.</strong><p>Запазете study ID, ако е необходимо да се свържете с изследователския екип.</p><code id="completed-id"></code></div>
+        <div class="prose"><h3>Информация след експеримента</h3><p>Изследването сравнява преосмисляне с помощта на самостоятелно избран генеративен ИИ и структурирано преосмисляне без ИИ. Интерес представлява промяната в разпределението между вариантите, а не дали конкретен отговор е „правилен“.</p></div>
+      </section>
+
+      <section class="step" data-step="10" hidden>
+        <p class="eyebrow">Прекратено участие</p>
+        <h2>Участието Ви е прекратено</h2>
+        <div class="notice"><strong>Няма нужда да предприемате друго действие.</strong><p>Сесията е отбелязана като прекратена и не може да бъде продължена.</p></div>
+      </section>
+    </section>
+  </main>
+
+  <script id="wave2-data" type="application/json">{{ {"study": study, "case": case, "tasks": tasks, "system_prompt": system_prompt}|tojson }}</script>
+  <script src="{{ url_for('static', filename='wave2.js') }}" defer></script>
+</body>
+</html>

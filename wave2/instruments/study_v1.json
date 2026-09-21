@@ -7,6 +7,8 @@
   "stratification": ["session_code", "baseline_preferred"],
   "permuted_block_sizes": [4, 6],
   "intervention_seconds": 720,
+  "intervention_mode": "participant_selected_ai_tool",
+  "api_provider": null,
   "case_instrument": "case_ev_v1.json",
   "task_instrument": "mandatory_tasks_v1.json",
   "system_prompt_instrument": "ai_system_prompt_v1.txt",

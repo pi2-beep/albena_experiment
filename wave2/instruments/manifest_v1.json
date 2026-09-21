@@ -2,9 +2,9 @@
   "manifest_version": "wave2-instruments-v1",
   "status": "draft_pending_preregistration",
   "files": [
-    {"path": "study_v1.json", "sha256": "8cacddee3f8119f35eb6b845ff9f4af2813dd490ca1488a23ecc478304039b78"},
+    {"path": "study_v1.json", "sha256": "fb556997f5a6ee01655080168fba28cc4eb64755d534cfcb61335e2884155a4d"},
     {"path": "case_ev_v1.json", "sha256": "3aa17212474b9a526fbb4c90f36bf588588319571d40e3dd2aaebf5a84c13945"},
-    {"path": "mandatory_tasks_v1.json", "sha256": "490cb65ca429b4243c3783c4b86258b8e255786a5535e3724cc90f7f9cbd87e8"},
+    {"path": "mandatory_tasks_v1.json", "sha256": "224a39cf37a26db80714aba27755b47000440d7815928668663e2eefea07f864"},
     {"path": "ai_system_prompt_v1.txt", "sha256": "a04c3033b9513d44987c2f8687b2da4ccf9f12e5275846f92c8267c5c2c621af"}
   ]
 }

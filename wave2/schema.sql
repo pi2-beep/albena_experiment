@@ -129,25 +129,16 @@ CREATE TABLE ai_messages (
     message_id UUID PRIMARY KEY,
     participant_id UUID NOT NULL REFERENCES participants(participant_id),
     task_id UUID NOT NULL REFERENCES intervention_tasks(task_id),
-    sequence INTEGER NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('system', 'user', 'assistant')),
-    content TEXT,
-    provider TEXT NOT NULL,
-    model TEXT NOT NULL,
-    model_version TEXT,
-    system_prompt_version TEXT NOT NULL,
-    model_configuration JSONB NOT NULL,
-    provider_request_id TEXT,
-    request_started_at TIMESTAMPTZ NOT NULL,
-    response_completed_at TIMESTAMPTZ,
-    latency_ms INTEGER,
+    prompt_text TEXT NOT NULL,
+    response_text TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    access_plan TEXT NOT NULL CHECK (access_plan IN ('free', 'paid', 'unknown')),
+    browsing_used TEXT NOT NULL CHECK (browsing_used IN ('yes', 'no', 'unknown')),
+    self_reported_model TEXT,
+    prompt_copied_at TIMESTAMPTZ,
+    response_pasted_at TIMESTAMPTZ,
     character_length INTEGER,
-    input_tokens INTEGER,
-    output_tokens INTEGER,
-    status TEXT NOT NULL CHECK (status IN ('pending', 'completed', 'timeout', 'error')),
-    error_type TEXT,
-    error_detail TEXT,
-    UNIQUE (participant_id, sequence)
+    UNIQUE (participant_id, task_id)
 );
 
 CREATE TABLE immediate_post_judgements (
@@ -200,7 +191,7 @@ CREATE TABLE audit_events (
 );
 
 CREATE INDEX audit_events_participant_time_idx ON audit_events(participant_id, occurred_at);
-CREATE INDEX ai_messages_participant_sequence_idx ON ai_messages(participant_id, sequence);
+CREATE INDEX ai_messages_participant_idx ON ai_messages(participant_id);
 CREATE INDEX randomisation_slots_available_idx
     ON randomisation_slots(stratum, schedule_version, allocation_sequence)
     WHERE participant_id IS NULL;

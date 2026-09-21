@@ -20,6 +20,9 @@ class SchemaTestCase(unittest.TestCase):
 
     def test_raw_ai_messages_are_separate_from_participant_outcomes(self):
         self.assertIn("CREATE TABLE ai_messages", self.schema)
+        self.assertIn("tool_name TEXT NOT NULL", self.schema)
+        self.assertIn("response_pasted_at TIMESTAMPTZ", self.schema)
+        self.assertNotIn("provider_request_id", self.schema)
         self.assertIn("CREATE TABLE immediate_post_judgements", self.schema)
         self.assertIn("CREATE TABLE final_judgements", self.schema)
 

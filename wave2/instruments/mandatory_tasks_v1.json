@@ -1,9 +1,27 @@
 {
   "version": "mandatory-tasks-v1",
   "tasks": [
-    {"id": "supporting_argument", "sequence": 1, "origin": "assigned", "text": "Ask for the strongest evidence-based argument supporting the participant's initial judgement."},
-    {"id": "counterargument", "sequence": 2, "origin": "assigned", "text": "Ask for the strongest counterargument, risk or uncertainty that could affect that judgement."},
-    {"id": "tradeoffs", "sequence": 3, "origin": "assigned", "text": "Ask AI to compare the trade-offs between A, B and C and identify whether any assumption or consideration deserves greater weight."}
+    {
+      "id": "supporting_argument",
+      "sequence": 1,
+      "origin": "assigned",
+      "prompt_template_bg": "Кой е най-силният аргумент, основан единствено на предоставените доказателства, в подкрепа на първоначалната ми преценка за вариант {preferred}? Разграничи доказателствата от изводите и посочи несигурността.",
+      "reflection_prompt_bg": "Кой е най-силният аргумент, основан единствено на предоставените доказателства, в подкрепа на първоначалната Ви преценка за вариант {preferred}? Разграничете доказателствата от изводите и посочете несигурността."
+    },
+    {
+      "id": "counterargument",
+      "sequence": 2,
+      "origin": "assigned",
+      "prompt_template_bg": "Кой е най-силният контрааргумент, риск или източник на несигурност, който може да промени първоначалната ми преценка за вариант {preferred}? Използвай само предоставения казус.",
+      "reflection_prompt_bg": "Кой е най-силният контрааргумент, риск или източник на несигурност, който може да промени първоначалната Ви преценка за вариант {preferred}? Използвайте само предоставения казус."
+    },
+    {
+      "id": "tradeoffs",
+      "sequence": 3,
+      "origin": "assigned",
+      "prompt_template_bg": "Сравни компромисите между варианти A, B и C. Посочи дали някое допускане или съображение заслужава по-голяма тежест. Използвай само предоставения казус и не добавяй нови факти.",
+      "reflection_prompt_bg": "Сравнете компромисите между варианти A, B и C. Посочете дали някое допускане или съображение заслужава по-голяма тежест. Използвайте само предоставения казус и не добавяйте нови факти."
+    }
   ],
   "optional_participant_initiated_slots": 2,
   "status": "frozen_draft_pending_scientific_approval"

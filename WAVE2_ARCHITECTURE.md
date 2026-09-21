@@ -11,7 +11,7 @@ Status: implementation foundation; not deployed. Wave 1 production remains on `m
 
 ## Canonical records
 
-PostgreSQL is the intended canonical store. Render local files and browser storage are not authoritative. FTPS is a versioned backup/export destination only.
+PostgreSQL is the intended canonical store if a no-cost managed option is approved. Render local files and browser storage are not authoritative. FTPS is a versioned backup/export destination only. The local prototype deliberately uses an isolated SQLite file and is not production storage.
 
 The draft relational schema is in `wave2/schema.sql`. Database changes will be applied through migrations after the database provider and retention policy are approved.
 
@@ -35,11 +35,11 @@ The master seed is secret and must never be committed. Production allocation wil
 
 ## Intervention records
 
-Assigned tasks and participant-initiated optional tasks are separate data categories. AI messages will be stored separately from the participant-level dataset. The AI gateway will receive case content and task text but no participant ID or session code.
+Wave 2 uses a zero-cost, naturalistic intervention. Participants assigned to the ИИ arm use an ИИ tool to which they already have access; the site supplies the frozen case and three frozen prompts, then records the pasted responses and declared tool metadata. The two additional prompts are optional. Control participants complete three parallel structured-reflection tasks without ИИ. Assigned tasks and participant-initiated optional tasks are separate data categories.
 
 ## Open decisions before deployable implementation
 
-- AI provider, exact model/version and configuration.
+- Whether the naturalistic variation in participant-selected ИИ tools is acceptable in the final preregistration and analysis plan.
 - Database provider, retention period and backup encryption.
 - Controlled session-code catalogue and invitation-token procedure.
 - Whether early intervention completion is allowed and whether provider latency counts toward 12 minutes.

@@ -17,11 +17,16 @@ class InstrumentTestCase(unittest.TestCase):
         self.assertEqual(study["maximum_sample_size"], 240)
         self.assertEqual(study["permuted_block_sizes"], [4, 6])
         self.assertEqual(study["intervention_seconds"], 720)
+        self.assertEqual(study["intervention_mode"], "participant_selected_ai_tool")
+        self.assertIsNone(study["api_provider"])
 
     def test_assigned_tasks_are_distinguishable_from_optional_behaviour(self):
         tasks = load_json_instrument("mandatory_tasks_v1.json")
         self.assertEqual([task["origin"] for task in tasks["tasks"]], ["assigned"] * 3)
         self.assertEqual(tasks["optional_participant_initiated_slots"], 2)
+        for task in tasks["tasks"]:
+            self.assertTrue(task["prompt_template_bg"].strip())
+            self.assertTrue(task["reflection_prompt_bg"].strip())
 
     def test_system_prompt_preserves_the_approved_meaning(self):
         prompt = load_text_instrument("ai_system_prompt_v1.txt")
