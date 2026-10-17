@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import os
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,7 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent
 FONT_DIR = ROOT / "fonts"
-PDF_DIR = ROOT / "data" / "pdfs"
+PDF_DIR = Path(os.environ.get("WAVE1_PDF_DIRECTORY", ROOT / "data" / "pdfs"))
 
 
 def _font_path(filename: str) -> Path:

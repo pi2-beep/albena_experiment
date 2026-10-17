@@ -253,6 +253,59 @@ def _archive_to_github(pdf_path: Path, record: dict, session_id: str) -> str | N
     return str(relative_path)
 
 
+def _write_local_item(destination: Path, content: bytes) -> bool:
+    temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.part")
+    try:
+        with temporary.open("xb") as output:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+        temporary.chmod(0o600)
+        temporary.replace(destination)
+        return destination.stat().st_size == len(content)
+    except OSError:
+        LOGGER.exception("Local archive item write failed [filename=%s]", destination.name)
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
+
+
+def _archive_to_local(pdf_path: Path, record: dict, session_id: str) -> ArchiveResult:
+    root = Path(os.environ.get("RESULTS_LOCAL_DIRECTORY", "/var/lib/albena-results/completed"))
+    day, filename = _archive_name(record, session_id)
+    directory = root / day
+    try:
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        directory.chmod(0o700)
+    except OSError as error:
+        raise ResultArchiveError("Локалният архив не е достъпен.") from error
+
+    stem = Path(filename).stem
+    index = 1
+    while True:
+        suffix = "" if index == 1 else f"-{index}"
+        pdf_name = f"{stem}{suffix}.pdf"
+        json_name = f"{stem}{suffix}.json"
+        if not (directory / pdf_name).exists() and not (directory / json_name).exists():
+            break
+        index += 1
+
+    pdf_saved = _write_local_item(directory / pdf_name, pdf_path.read_bytes())
+    json_bytes = json.dumps(record, ensure_ascii=False, indent=2).encode("utf-8")
+    json_saved = _write_local_item(directory / json_name, json_bytes)
+    if not pdf_saved and not json_saved:
+        raise ResultArchiveError("Локалният архив не прие PDF или JSON файла.")
+    return ArchiveResult(
+        remote_directory=str(directory),
+        pdf_filename=pdf_name,
+        json_filename=json_name,
+        pdf_saved=pdf_saved,
+        json_saved=json_saved,
+    )
+
+
 def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
     """Archive a completed PDF and its data using the configured backend."""
     backend = os.environ.get("RESULTS_ARCHIVE_BACKEND", "").strip().lower()
@@ -260,6 +313,8 @@ def archive_pdf(pdf_path: Path, record: dict, session_id: str) -> str | None:
         return _archive_to_ftp(pdf_path, record, session_id)
     if backend == "github":
         return _archive_to_github(pdf_path, record, session_id)
+    if backend == "local":
+        return _archive_to_local(pdf_path, record, session_id)
     if backend:
         raise ResultArchiveError("Избраният архив не се поддържа.")
     return _archive_to_github(pdf_path, record, session_id)

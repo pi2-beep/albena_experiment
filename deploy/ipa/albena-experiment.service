@@ -1,0 +1,32 @@
+[Unit]
+Description=Albena Experiment Wave 1
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=albenaapp
+Group=albenaapp
+WorkingDirectory=/opt/albena-experiment/app
+EnvironmentFile=/etc/albena-experiment.env
+StateDirectory=albena-experiment
+StateDirectoryMode=0700
+ExecStart=/opt/albena-experiment/venv/bin/gunicorn --workers 2 --threads 2 --timeout 120 --bind 127.0.0.1:8001 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/albena-experiment
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up Albena Experiment Wave 1
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/albena-experiment-backup
+UMask=0077
+Nice=10

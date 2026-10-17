@@ -9,14 +9,19 @@ from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request, send_file, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from pdf_export import build_pdf, pdf_path_for
 from result_store import ArchiveResult, ResultArchiveError, archive_pdf
+from wave1_postgres_store import Wave1PostgresStore
 
 
 ROOT = Path(__file__).resolve().parent
-APP_VERSION = os.environ.get("APP_VERSION", "1.4.3")
-SESSION_DIR = ROOT / "data" / "sessions"
+APP_VERSION = os.environ.get("APP_VERSION", "1.5.0")
+PRODUCTION = os.environ.get("WAVE1_ENV", "").strip().lower() == "production"
+DATABASE_URL = os.environ.get("WAVE1_DATABASE_URL", "").strip()
+RUNTIME_DIR = Path(os.environ.get("WAVE1_RUNTIME_DIRECTORY", ROOT / "data"))
+SESSION_DIR = RUNTIME_DIR / "sessions"
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
 try:
     SESSION_LIMIT_SECONDS = max(1, int(os.environ.get("SESSION_LIMIT_SECONDS", "2700")))
@@ -25,13 +30,26 @@ except ValueError:
 SESSION_LIMIT = timedelta(seconds=SESSION_LIMIT_SECONDS)
 
 app = Flask(__name__)
+secret_key = os.environ.get("SECRET_KEY", "local-development-key-change-on-render")
+if PRODUCTION and secret_key == "local-development-key-change-on-render":
+    raise RuntimeError("SECRET_KEY must be configured in production")
+if PRODUCTION and not DATABASE_URL:
+    raise RuntimeError("WAVE1_DATABASE_URL must be configured in production")
 app.config.update(
-    SECRET_KEY=os.environ.get("SECRET_KEY", "local-development-key-change-on-render"),
+    SECRET_KEY=secret_key,
     MAX_CONTENT_LENGTH=2 * 1024 * 1024,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.environ.get("RENDER") == "true",
+    SESSION_COOKIE_SECURE=os.environ.get("WAVE1_SECURE_COOKIES", "").strip().lower() in {"1", "true", "yes", "on"}
+    or os.environ.get("RENDER") == "true",
 )
+trusted_hosts = [item.strip() for item in os.environ.get("WAVE1_TRUSTED_HOSTS", "").split(",") if item.strip()]
+if trusted_hosts:
+    app.config["TRUSTED_HOSTS"] = trusted_hosts
+if os.environ.get("WAVE1_TRUST_PROXY", "").strip().lower() in {"1", "true", "yes", "on"}:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+postgres_store = Wave1PostgresStore(DATABASE_URL) if DATABASE_URL else None
 
 
 def now_iso() -> str:
@@ -65,6 +83,8 @@ def session_path(sid: str) -> Path:
 
 
 def load_record(sid: str) -> dict[str, Any]:
+    if postgres_store:
+        return postgres_store.load(sid)
     path = session_path(sid)
     if not path.exists():
         return {}
@@ -75,6 +95,9 @@ def load_record(sid: str) -> dict[str, Any]:
 
 
 def save_record(sid: str, record: dict[str, Any]) -> None:
+    if postgres_store:
+        postgres_store.save(sid, record)
+        return
     path = session_path(sid)
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -148,7 +171,29 @@ def index():
 
 @app.get("/health")
 def health():
-    return jsonify(status="ok", version=APP_VERSION)
+    return jsonify(
+        status="ok",
+        version=APP_VERSION,
+        wave="1",
+        mode="production" if PRODUCTION else "prototype",
+        storage="postgresql" if postgres_store else "files",
+    )
+
+
+@app.after_request
+def security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+        "script-src 'self'; connect-src 'self'; form-action 'self'; "
+        "frame-ancestors 'none'; base-uri 'self'",
+    )
+    if request.path.startswith("/api/") or request.path == "/":
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
 
 
 @app.post("/api/login")
@@ -294,8 +339,9 @@ def create_pdf():
     response.headers["X-Results-Generated-At"] = record["completed_at"]
     if archive_error_id:
         response.headers["X-Results-Archive-Error-ID"] = archive_error_id
+        archive_backend = os.environ.get("RESULTS_ARCHIVE_BACKEND", "ftps").strip().lower() or "ftps"
         response.headers["X-Results-Archive-Error-Stage"] = (
-            "ftps-partial" if archive_status == "partial" else "ftps-upload"
+            f"{archive_backend}-partial" if archive_status == "partial" else f"{archive_backend}-upload"
         )
     response.headers["Cache-Control"] = "no-store, private"
     response.headers["Pragma"] = "no-cache"

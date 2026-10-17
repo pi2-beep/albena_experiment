@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -420,6 +421,30 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(result, "/albena-results/result.pdf")
         ftp_archive.assert_called_once()
         github_archive.assert_not_called()
+
+    def test_local_archive_writes_private_pdf_and_json(self):
+        pdf = Path(self.temp_dir.name) / "result.pdf"
+        pdf.write_bytes(b"example-pdf")
+        archive_root = Path(self.temp_dir.name) / "completed"
+        payload = complete_payload()
+        payload["completed_at"] = "2026-10-17T10:00:00+03:00"
+        environment = {
+            "RESULTS_ARCHIVE_BACKEND": "local",
+            "RESULTS_LOCAL_DIRECTORY": str(archive_root),
+            "SECRET_KEY": "test-key",
+        }
+        with mock.patch.dict(os.environ, environment, clear=True):
+            archive = result_store.archive_pdf(pdf, payload, "b" * 32)
+
+        self.assertTrue(archive.complete)
+        destination = Path(archive.remote_directory)
+        self.assertEqual(destination.name, "2026-10-17")
+        saved_pdf = destination / archive.pdf_filename
+        saved_json = destination / archive.json_filename
+        self.assertEqual(saved_pdf.read_bytes(), b"example-pdf")
+        self.assertEqual(json.loads(saved_json.read_text(encoding="utf-8"))["participant_code"], "TEST-01")
+        self.assertEqual(saved_pdf.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(saved_json.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":
