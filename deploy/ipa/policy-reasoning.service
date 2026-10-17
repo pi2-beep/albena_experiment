@@ -1,0 +1,29 @@
+[Unit]
+Description=Policy Reasoning Lab Wave 2
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=policyapp
+Group=policyapp
+WorkingDirectory=/opt/policy-reasoning/app
+EnvironmentFile=/etc/policy-reasoning.env
+ExecStart=/opt/policy-reasoning/venv/bin/gunicorn --workers 2 --threads 2 --timeout 60 --bind 127.0.0.1:8000 --access-logfile - --error-logfile - wave2_app:app
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

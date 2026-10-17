@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from wave2.web import create_app
@@ -94,6 +95,20 @@ class Wave2WebTestCase(unittest.TestCase):
     def test_mutating_endpoints_require_csrf(self):
         response = self.client.post("/api/consent", json={})
         self.assertEqual(response.status_code, 403)
+
+    def test_production_refuses_default_secrets_and_sqlite(self):
+        with patch.dict("os.environ", {"WAVE2_ENV": "production"}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "WAVE2_SECRET_KEY"):
+                create_app()
+
+        environment = {
+            "WAVE2_ENV": "production",
+            "WAVE2_SECRET_KEY": "s" * 48,
+            "WAVE2_RANDOMISATION_SEED": "r" * 48,
+        }
+        with patch.dict("os.environ", environment, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "DATABASE_URL"):
+                create_app()
 
     def test_participant_can_withdraw_and_cannot_resume(self):
         response = self.client.post("/api/withdraw", headers=self.headers, json={})

@@ -153,7 +153,7 @@
     </section>
   </main>
 
-  <script id="wave2-data" type="application/json">{{ {"study": study, "case": case, "tasks": tasks, "system_prompt": system_prompt}|tojson }}</script>
+  <script id="wave2-data" type="application/json" nonce="{{ g.csp_nonce }}">{{ {"study": study, "case": case, "tasks": tasks, "system_prompt": system_prompt}|tojson }}</script>
   <script src="{{ url_for('static', filename='wave2.js') }}" defer></script>
 </body>
 </html>

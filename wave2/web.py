@@ -5,7 +5,8 @@ import secrets
 from pathlib import Path
 from typing import Any, Callable
 
-from flask import Flask, jsonify, render_template, request, send_from_directory, session
+from flask import Flask, g, jsonify, render_template, request, send_from_directory, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .domain import DomainValidationError, revision_score
 from .instruments import load_json_instrument, load_text_instrument
@@ -30,20 +31,60 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         ),
         WAVE2_INTERVENTION_SECONDS=int(os.environ.get("WAVE2_INTERVENTION_SECONDS", "720")),
         SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_NAME="policy_reasoning_session",
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.environ.get("RENDER") == "true",
+        SESSION_COOKIE_SECURE=os.environ.get("WAVE2_SECURE_COOKIES", "false").lower() == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
     )
     if test_config:
         app.config.update(test_config)
-    if not app.config.get("TESTING") and os.environ.get("RENDER") == "true":
-        raise RuntimeError("Wave 2 SQLite prototype must not be deployed to Render.")
-    store = Wave2Store(
-        Path(app.config["WAVE2_DB_PATH"]),
-        randomisation_seed=app.config["WAVE2_RANDOMISATION_SEED"],
-        intervention_seconds=int(app.config["WAVE2_INTERVENTION_SECONDS"]),
-    )
+    production = os.environ.get("WAVE2_ENV") == "production"
+    if production and not app.config.get("TESTING"):
+        if app.config["SECRET_KEY"] == "wave2-local-development-key" or len(app.config["SECRET_KEY"]) < 32:
+            raise RuntimeError("Production Wave 2 requires a strong WAVE2_SECRET_KEY.")
+        if app.config["WAVE2_RANDOMISATION_SEED"] == "local-wave2-randomisation-seed-change-before-pilot":
+            raise RuntimeError("Production Wave 2 requires WAVE2_RANDOMISATION_SEED.")
+    trusted_hosts = [host.strip() for host in os.environ.get("WAVE2_TRUSTED_HOSTS", "").split(",") if host.strip()]
+    if trusted_hosts:
+        app.config["TRUSTED_HOSTS"] = trusted_hosts
+    if os.environ.get("WAVE2_TRUST_PROXY", "false").lower() == "true":
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if database_url:
+        from .postgres_store import PostgresWave2Store
+
+        store = PostgresWave2Store(
+            database_url,
+            randomisation_seed=app.config["WAVE2_RANDOMISATION_SEED"],
+            intervention_seconds=int(app.config["WAVE2_INTERVENTION_SECONDS"]),
+        )
+    else:
+        if not app.config.get("TESTING") and production:
+            raise RuntimeError("Production Wave 2 requires DATABASE_URL.")
+        store = Wave2Store(
+            Path(app.config["WAVE2_DB_PATH"]),
+            randomisation_seed=app.config["WAVE2_RANDOMISATION_SEED"],
+            intervention_seconds=int(app.config["WAVE2_INTERVENTION_SECONDS"]),
+        )
     app.extensions["wave2_store"] = store
+
+    @app.before_request
+    def request_security_context():
+        g.csp_nonce = secrets.token_urlsafe(18)
+
+    @app.after_request
+    def security_headers(response):
+        response.headers.setdefault("Cache-Control", "no-store")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+            f"script-src 'self' 'nonce-{g.csp_nonce}'; connect-src 'self'; form-action 'self'; "
+            "frame-ancestors 'none'; base-uri 'self'",
+        )
+        return response
 
     def current_participant_id() -> str | None:
         value = session.get("wave2_participant_id")
@@ -92,7 +133,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/health")
     def health():
-        return jsonify(status="ok", wave="2", mode="prototype", deployed=False)
+        return jsonify(status="ok", wave="2", mode="production" if production else "prototype", deployed=production)
 
     @app.post("/api/start")
     def start():
