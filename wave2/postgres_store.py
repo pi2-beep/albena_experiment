@@ -29,6 +29,10 @@ class PostgresWave2Store:
     def initialise(self) -> None:
         with self.connect() as connection:
             connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                ("policy-reasoning-wave2-runtime-schema-v1",),
+            )
+            connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS wave2_runtime_participants (
                     participant_id UUID PRIMARY KEY,
